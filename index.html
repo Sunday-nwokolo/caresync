@@ -225,6 +225,12 @@ tr:hover td{background:#fafcff;}
 /* EMPTY */
 .empty{text-align:center;padding:48px 20px;color:var(--muted);}
 .empty p{font-size:14px;}
+/* VOID */
+.voided-record{opacity:.5;text-decoration:line-through;}
+.void-badge{background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;}
+.emar-give-btn.voided{background:#f1f5f9;color:var(--muted);cursor:pointer;text-decoration:line-through;font-size:10px;}
+/* EDIT MED */
+.med-card-actions{display:flex;gap:6px;margin-top:10px;}
 
 /* MONTH NAV */
 .mnav{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
@@ -505,6 +511,62 @@ tr:hover td{background:#fafcff;}
     </div>
   </div>
 </div>
+
+<!-- VOID MAR RECORD MODAL -->
+<div class="ovl" id="void-mar-m"><div class="modal" style="max-width:420px">
+  <div class="mh"><h3>Void Record</h3><button class="mc" onclick="cm('void-mar-m')">×</button></div>
+  <div id="void-mar-info" style="background:var(--red-pale);border:1px solid #fecaca;border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;"></div>
+  <div style="background:var(--amber-pale);border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-bottom:14px">
+    ⚠️ This record will be marked as VOIDED but kept in the audit trail. This cannot be undone.
+  </div>
+  <div class="f"><label>Reason for Voiding</label>
+    <div class="trow" id="void-reason-tags" style="margin-bottom:10px">
+      <div class="tag" onclick="togSingle(this,'void-reason-tags')">Wrong medication selected</div>
+      <div class="tag" onclick="togSingle(this,'void-reason-tags')">Wrong time entered</div>
+      <div class="tag" onclick="togSingle(this,'void-reason-tags')">Duplicate entry</div>
+      <div class="tag" onclick="togSingle(this,'void-reason-tags')">Wrong service user</div>
+      <div class="tag" onclick="togSingle(this,'void-reason-tags')">Other error</div>
+    </div>
+    <textarea id="void-notes" style="min-height:60px" placeholder="Additional details..."></textarea>
+  </div>
+  <div class="f"><label>Your Initials (to authorise void)</label><input id="void-initials" type="text" maxlength="4" placeholder="JS" style="text-transform:uppercase"></div>
+  <div class="mf">
+    <button class="btn bo" onclick="cm('void-mar-m')">Cancel</button>
+    <button class="btn" style="background:var(--red);color:#fff" onclick="confirmVoid()">Void This Record</button>
+  </div>
+</div></div>
+
+<!-- EDIT MEDICATION MODAL -->
+<div class="ovl" id="edit-med-m"><div class="modal">
+  <div class="mh"><h3>Edit Medication</h3><button class="mc" onclick="cm('edit-med-m')">×</button></div>
+  <input type="hidden" id="edit-med-id">
+  <div class="f"><label>Medication Name</label><input id="edit-med-nm" type="text"></div>
+  <div class="frow">
+    <div class="f"><label>Dose</label><input id="edit-med-ds" type="text"></div>
+    <div class="f"><label>Type</label><select id="edit-med-ty"><option value="scheduled">Scheduled</option><option value="prn">PRN</option></select></div>
+  </div>
+  <div class="f"><label>Administration Times</label>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="time" id="edit-time-input" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none">
+      <button class="btn bt bsm" type="button" onclick="addEditMedTime()">+ Add</button>
+    </div>
+    <div id="edit-times-list" style="display:flex;gap:6px;flex-wrap:wrap;min-height:28px"></div>
+  </div>
+  <div class="frow">
+    <div class="f"><label>Current Stock</label><input id="edit-med-st" type="number" min="0"></div>
+    <div class="f"><label>Reorder at</label><input id="edit-med-reorder" type="number" min="1"></div>
+  </div>
+  <div class="f"><label>Instructions</label><textarea id="edit-med-nt" style="min-height:55px"></textarea></div>
+  <div style="background:var(--red-pale);border-radius:8px;padding:12px;margin-bottom:4px">
+    <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:8px">⛔ Deactivate Medication</div>
+    <div style="font-size:12px;color:#991b1b;margin-bottom:8px">Use this if the medication has been stopped by the GP. It will be hidden from the MAR chart but kept in records.</div>
+    <button class="btn" style="background:var(--red);color:#fff;width:100%;justify-content:center" onclick="deactivateMed()">Deactivate This Medication</button>
+  </div>
+  <div class="mf">
+    <button class="btn bo" onclick="cm('edit-med-m')">Cancel</button>
+    <button class="btn bt" onclick="saveEditMed()">Save Changes</button>
+  </div>
+</div></div>
 
 <!-- SHIFT PICKER POPUP -->
 <div class="shift-popup" id="shift-popup">
@@ -1177,6 +1239,8 @@ function renderMonthMAR(){
   grid.innerHTML=html;
 }
 
+let pendingVoidId = null;
+
 function renderAuditTrail(suId){
   const el=document.getElementById('audit-list');if(!el)return;
   let recs=suId?marRecords.filter(r=>r.service_user_id===suId):marRecords;
@@ -1184,14 +1248,140 @@ function renderAuditTrail(suId){
   if(!recs.length){el.innerHTML='<div class="empty"><p>No records yet</p></div>';return;}
   el.innerHTML=recs.map(r=>{
     const med=meds.find(m=>m.id===r.medication_id);
-    return`<div style="padding:10px 0;border-bottom:1px solid #f5f7fb;font-size:13px">
-      <div style="display:flex;justify-content:space-between">
-        <div><strong>${med?.name||r.medication_id}</strong> <span class="bdg ${r.status==='given'?'bg2':r.status==='refused'?'br2':'bgy'}" style="font-size:10px">${r.status?.toUpperCase()}</span></div>
-        <span style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">${new Date(r.created_at).toLocaleString('en-GB')}</span>
+    const isVoided=r.voided;
+    return`<div style="padding:12px 0;border-bottom:1px solid #f5f7fb;font-size:13px;${isVoided?'opacity:.6':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <strong style="${isVoided?'text-decoration:line-through':''}">${med?.name||'Unknown medication'}</strong>
+          <span class="bdg ${r.status==='given'?'bg2':r.status==='refused'?'br2':'bgy'}" style="font-size:10px;margin-left:6px">${r.status?.toUpperCase()}</span>
+          ${isVoided?`<span class="void-badge">VOIDED</span>`:''}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">${new Date(r.created_at).toLocaleString('en-GB')}</span>
+          ${!isVoided&&canMgr()?`<button class="btn" style="background:var(--red-pale);color:#991b1b;font-size:10px;padding:3px 8px;border:1px solid #fecaca" onclick="openVoidModal('${r.id}','${(med?.name||'').replace(/'/g,"\'")}','${r.admin_time}','${r.admin_date}','${r.initials||''}')">Void</button>`:''}
+        </div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmt(r.admin_time)} · Initials: ${r.initials||'—'} ${r.refusal_reason?'· Reason: '+r.refusal_reason:''} ${r.notes?'· '+r.notes:''}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">
+        ${fmt(r.admin_time)} · ${r.admin_date} · Initials: ${r.initials||'—'}
+        ${r.refusal_reason?' · Reason: '+r.refusal_reason:''}
+        ${r.notes?' · '+r.notes:''}
+        ${isVoided?`<span style="color:var(--red);font-weight:600"> · VOIDED: ${r.void_reason||''}</span>`:''}
+      </div>
     </div>`;
   }).join('');
+}
+
+function openVoidModal(recId, medName, time, date, initials){
+  pendingVoidId = recId;
+  document.getElementById('void-mar-info').innerHTML=`
+    <div style="font-weight:700;color:#991b1b;margin-bottom:4px">Record to be voided:</div>
+    <div><strong>${medName}</strong> · ${fmt(time)} · ${date}</div>
+    <div style="font-size:12px;margin-top:3px">Originally signed by: ${initials||'—'}</div>`;
+  document.getElementById('void-notes').value='';
+  document.getElementById('void-initials').value='';
+  resetTags('void-reason-tags');
+  document.getElementById('void-mar-m').classList.add('on');
+}
+
+async function confirmVoid(){
+  if(!pendingVoidId){alert('No record selected');return;}
+  const reason=getSingle('void-reason-tags');
+  const notes=document.getElementById('void-notes').value.trim();
+  const initials=document.getElementById('void-initials').value.trim().toUpperCase();
+  if(!reason){alert('Please select a reason for voiding');return;}
+  if(!initials){alert('Enter your initials to authorise the void');return;}
+  const voidReason=reason+(notes?' — '+notes:'');
+  const {error}=await sb.from('mar_records').update({
+    voided:true,
+    void_reason:voidReason,
+    void_initials:initials,
+    voided_at:new Date().toISOString(),
+    voided_by:CUProfile.id
+  }).eq('id',pendingVoidId);
+  if(error){alert('Error voiding record: '+error.message);return;}
+  // Update local state
+  const rec=marRecords.find(r=>r.id===pendingVoidId);
+  if(rec){rec.voided=true;rec.void_reason=voidReason;}
+  cm('void-mar-m');
+  renderAuditTrail(document.getElementById('mar-su').value);
+  renderShiftView(document.getElementById('mar-su').value);
+  renderMonthMAR();
+  alert('Record voided successfully. The original entry is preserved in the audit trail.');
+}
+
+// ══════════════════════════════════════════
+// EDIT / DEACTIVATE MEDICATION
+// ══════════════════════════════════════════
+let editMedTimesList = [];
+
+function openEditMed(medId){
+  const med=meds.find(m=>m.id===medId);if(!med)return;
+  document.getElementById('edit-med-id').value=medId;
+  document.getElementById('edit-med-nm').value=med.name;
+  document.getElementById('edit-med-ds').value=med.dose||'';
+  document.getElementById('edit-med-ty').value=med.type||'scheduled';
+  document.getElementById('edit-med-st').value=med.stock||0;
+  document.getElementById('edit-med-reorder').value=med.reorder_at||7;
+  document.getElementById('edit-med-nt').value=med.notes||'';
+  editMedTimesList=[...(med.times||[])];
+  renderEditMedTimes();
+  document.getElementById('edit-med-m').classList.add('on');
+}
+
+function addEditMedTime(){
+  const t=document.getElementById('edit-time-input').value;
+  if(!t){alert('Select a time');return;}
+  if(editMedTimesList.includes(t)){alert('Already added');return;}
+  editMedTimesList.push(t);editMedTimesList.sort();renderEditMedTimes();
+  document.getElementById('edit-time-input').value='';
+}
+
+function removeEditMedTime(t){
+  editMedTimesList=editMedTimesList.filter(x=>x!==t);renderEditMedTimes();
+}
+
+function renderEditMedTimes(){
+  const el=document.getElementById('edit-times-list');if(!el)return;
+  if(!editMedTimesList.length){el.innerHTML='<div style="font-size:12px;color:var(--muted)">No times added</div>';return;}
+  el.innerHTML=editMedTimesList.map(t=>{
+    const s=getSlot(t);
+    return`<div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;background:${s.color};color:${s.tc}">${fmt(t)}<span onclick="removeEditMedTime('${t}')" style="cursor:pointer;opacity:.7">×</span></div>`;
+  }).join('');
+}
+
+async function saveEditMed(){
+  const medId=document.getElementById('edit-med-id').value;
+  const name=document.getElementById('edit-med-nm').value.trim();
+  if(!name){alert('Enter medication name');return;}
+  const updates={
+    name,
+    dose:document.getElementById('edit-med-ds').value.trim(),
+    type:document.getElementById('edit-med-ty').value,
+    times:editMedTimesList,
+    stock:parseInt(document.getElementById('edit-med-st').value)||0,
+    reorder_at:parseInt(document.getElementById('edit-med-reorder').value)||7,
+    notes:document.getElementById('edit-med-nt').value.trim()
+  };
+  const {error}=await sb.from('medications').update(updates).eq('id',medId);
+  if(error){alert('Error saving: '+error.message);return;}
+  // Update local state
+  const med=meds.find(m=>m.id===medId);
+  if(med)Object.assign(med,updates);
+  cm('edit-med-m');
+  renderMedCount();renderMAR();
+  alert('Medication updated successfully.');
+}
+
+async function deactivateMed(){
+  const medId=document.getElementById('edit-med-id').value;
+  const med=meds.find(m=>m.id===medId);
+  if(!confirm(`Are you sure you want to deactivate ${med?.name}? It will be hidden from the MAR chart.`))return;
+  const {error}=await sb.from('medications').update({is_active:false}).eq('id',medId);
+  if(error){alert('Error: '+error.message);return;}
+  meds=meds.filter(m=>m.id!==medId);
+  cm('edit-med-m');
+  renderMedCount();renderMAR();
+  alert('Medication deactivated. It has been removed from the MAR chart but kept in records.');
 }
 
 // ══════════════════════════════════════════
@@ -1229,7 +1419,10 @@ function renderMedCount(){
     return`<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
       <div><div style="font-size:14px;font-weight:700;color:var(--ink)">${med.name}</div>
       <div style="font-size:12px;color:var(--muted)">${su?su.fname+' '+su.lname:''} · ${med.dose}</div></div>
-      <span class="bdg ${bc}">${med.stock} left</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="bdg ${bc}">${med.stock} left</span>
+        ${canMgr()?`<button class="btn bo bsm" onclick="openEditMed('${med.id}')">✏️ Edit</button>`:''}
+      </div></div>
       <div class="msb"><div class="msf ${fc}" style="width:${pct}%"></div></div>
       <div style="margin-top:8px;font-size:11px;color:var(--muted)">
         ${hist.map(h=>`<div style="padding:3px 0;border-bottom:1px solid var(--border)">${h.count_type?.toUpperCase()} ${h.quantity} — ${h.staff_name} — ${new Date(h.created_at).toLocaleDateString('en-GB')}</div>`).join('')}
