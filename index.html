@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CareSync — Wales Care Management</title>
+<meta name="theme-color" content="#0abf8a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0c1a2e;--ink2:#1e3a5f;--ink3:#334e68;--muted:#6b7f99;--border:#dde4ef;--bg:#f4f7fb;--white:#fff;
+  --teal:#0abf8a;--teal2:#08a876;--teal3:#06915f;--teal-pale:#e6faf4;--teal-pale2:#d0f5e8;
+  --red:#f03e3e;--red-pale:#fff0f0;--amber:#f59f00;--amber-pale:#fff8e6;
+  --green:#2ecc71;--green-pale:#eafaf1;--blue:#3b82f6;--blue-pale:#eff6ff;
+  --purple:#8b5cf6;--purple-pale:#f5f3ff;
+  --r:12px;--r-sm:8px;--r-lg:18px;
+  --sh:0 1px 3px rgba(12,26,46,.06),0 4px 20px rgba(12,26,46,.05);
+  --sh-md:0 4px 16px rgba(12,26,46,.10),0 12px 40px rgba(12,26,46,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;}
+
+/* AUTH */
+#auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:linear-gradient(145deg,#0c1a2e 0%,#0d3b2b 50%,#0abf8a22 100%);}
+.auth-card{background:var(--white);border-radius:22px;padding:40px 36px;width:100%;max-width:420px;box-shadow:0 24px 80px rgba(0,0,0,.25);}
+.auth-logo{text-align:center;margin-bottom:32px;}
+.auth-logo h1{font-size:32px;font-weight:800;color:var(--ink);letter-spacing:-1px;}
+.auth-logo h1 em{color:var(--teal);font-style:normal;}
+.auth-logo p{font-size:12px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:1px;}
+.f{margin-bottom:16px;}
+.f label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+.f input,.f select,.f textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:inherit;font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;}
+.f input:focus,.f select:focus{border-color:var(--teal);}
+.btn-auth{width:100%;padding:14px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .2s;}
+.btn-auth:hover{background:var(--teal2);}
+.auth-err{background:var(--red-pale);color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:16px;}
+#loading h2{color:#fff;font-size:24px;font-weight:800;}
+#loading h2 em{color:var(--teal);font-style:normal;}
+.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--teal);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* OFFLINE */
+.offline-bar{position:fixed;top:0;left:0;right:0;background:var(--amber);color:#fff;text-align:center;padding:8px;font-size:12px;font-weight:700;z-index:9999;display:none;}
+.offline-bar.show{display:block;}
+
+/* APP */
+#app{display:none;min-height:100vh;}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--ink);display:flex;flex-direction:column;z-index:200;overflow:hidden;}
+.sb-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.sb-logo h2{font-size:21px;font-weight:800;color:#fff;letter-spacing:-.5px;}
+.sb-logo h2 em{color:var(--teal);font-style:normal;}
+.sb-user{padding:13px 20px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.sb-user .un{font-size:13px;font-weight:600;color:#fff;}
+.sb-user .ur{font-size:11px;color:rgba(255,255,255,.35);margin-top:2px;}
+.sb-user .uh{font-size:11px;color:var(--teal);margin-top:2px;font-weight:600;}
+.sb-hsel{padding:10px 20px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.sb-hsel select{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;padding:7px 10px;border-radius:6px;font-family:inherit;font-size:12px;outline:none;}
+.sb-hsel select option{background:var(--ink);}
+nav{flex:1;padding:10px 0;overflow-y:auto;min-height:0;}
+.ng{padding:12px 20px 4px;font-size:9px;font-weight:700;color:rgba(255,255,255,.22);text-transform:uppercase;letter-spacing:1.4px;}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.ni:hover{color:#fff;background:rgba(255,255,255,.04);}
+.ni.on{color:#fff;background:rgba(10,191,138,.15);border-left-color:var(--teal);}
+.ni svg{width:16px;height:16px;flex-shrink:0;}
+.sb-foot{padding:14px 20px;border-top:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.btn-logout{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.06);border:none;font-family:inherit;width:100%;padding:10px 14px;border-radius:8px;transition:all .15s;}
+.btn-logout:hover{color:#fff;background:rgba(255,255,255,.12);}
+.main{margin-left:220px;padding:24px;min-height:100vh;}
+
+/* PAGES */
+.pg{display:none;animation:fi .2s ease;}
+.pg.on{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap;}
+.ph h1{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px;}
+.ph p{font-size:12px;color:var(--muted);margin-top:3px;}
+
+/* CARDS */
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--sh);padding:20px;}
+.ct{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:14px;text-transform:uppercase;letter-spacing:.6px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.stat{background:var(--white);border-radius:var(--r);padding:20px;box-shadow:var(--sh);border-top:3px solid transparent;}
+.stat.ct2{border-top-color:var(--teal);}
+.stat.cr{border-top-color:var(--red);}
+.stat.ca{border-top-color:var(--amber);}
+.stat.cg{border-top-color:var(--green);}
+.sl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;}
+.sv{font-size:34px;font-weight:800;color:var(--ink);letter-spacing:-1.5px;line-height:1;margin:6px 0 4px;}
+.ss{font-size:11px;color:var(--muted);}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;}
+.bt{background:var(--teal);color:#fff;}.bt:hover{background:var(--teal2);}
+.bo{background:var(--white);color:var(--ink);border:1.5px solid var(--border);}.bo:hover{border-color:var(--teal);color:var(--teal);}
+.bsm{padding:6px 12px;font-size:12px;}
+
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.bg2{background:var(--green-pale);color:#1a7a3d;}
+.br2{background:var(--red-pale);color:#b91c1c;}
+.ba{background:var(--amber-pale);color:#92400e;}
+.bt2{background:var(--teal-pale);color:var(--teal3);}
+.bp{background:var(--purple-pale);color:#5b21b6;}
+.bgy{background:var(--bg);color:var(--muted);}
+
+/* TABLE */
+.twrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{background:var(--bg);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);}
+td{padding:12px 14px;font-size:13px;border-bottom:1px solid #f5f7fb;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fafcff;}
+
+/* MODAL */
+.ovl{position:fixed;inset:0;background:rgba(12,26,46,.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);}
+.ovl.on{display:flex;}
+.modal{background:var(--white);border-radius:var(--r-lg);padding:28px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;box-shadow:var(--sh-md);}
+.mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+.mh h3{font-size:17px;font-weight:800;color:var(--ink);}
+.mc{background:var(--bg);border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;}
+.mc:hover{background:var(--border);}
+.mf{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.trow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
+.tag{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);color:var(--muted);transition:all .15s;}
+.tag.on{background:var(--teal);color:#fff;border-color:var(--teal);}
+
+/* SU CARDS */
+.sug{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;}
+.suc{background:var(--white);border-radius:var(--r);padding:16px;box-shadow:var(--sh);display:flex;align-items:center;gap:13px;transition:box-shadow .2s;}
+.suc:hover{box-shadow:var(--sh-md);}
+.av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--teal),#0af5b0);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0;}
+
+/* MAR */
+.slot-morning{background:#dbeafe;}
+.slot-afternoon{background:#fef9c3;}
+.slot-evening{background:#dcfce7;}
+.slot-night{background:#fed7aa;}
+.slot-early{background:#f1f5f9;}
+.slot-prn{background:#f5f3ff;}
+.mar-real-wrap{overflow-x:auto;}
+.mar-real-tbl{border-collapse:collapse;min-width:1100px;width:100%;background:white;}
+.mar-real-tbl th{padding:6px 4px;font-size:10px;font-weight:700;text-align:center;border:1px solid #cbd5e1;}
+.mar-real-tbl th.med-col{text-align:left;min-width:180px;padding:6px 10px;background:#1e293b;color:#fff;}
+.mar-real-tbl th.day-col{min-width:30px;background:#1e293b;color:#fff;font-size:10px;}
+.mar-real-tbl th.day-col.wkd{background:#334155;}
+.mar-real-tbl td{border:1px solid #cbd5e1;padding:0;vertical-align:middle;}
+.mar-real-tbl td.med-info{padding:4px 10px;background:#f8fafc;min-width:180px;border-right:2px solid #cbd5e1;}
+.sign-cell{width:30px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;cursor:pointer;}
+.sign-cell:hover{opacity:.7;}
+.mar-legend-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.mar-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted);}
+.mar-leg-dot{width:14px;height:14px;border-radius:3px;display:inline-block;}
+
+/* LOG */
+.le{background:var(--white);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh);margin-bottom:10px;border-left:4px solid var(--teal);}
+.le.incident{border-left-color:var(--red);}
+
+/* ROTA */
+.rtwrap{overflow-x:auto;}
+.rtbl{border-collapse:collapse;width:100%;}
+.rtbl th{background:var(--ink);color:#fff;padding:8px 6px;font-size:11px;font-weight:600;text-align:center;}
+.rtbl th.sc{text-align:left;min-width:160px;padding-left:14px;}
+.rtbl td{border:1px solid #eef1f6;padding:2px;vertical-align:middle;text-align:center;}
+.rtbl td.stc{padding:8px 14px;font-size:13px;font-weight:600;color:var(--ink);background:var(--bg);white-space:nowrap;text-align:left;}
+.rtbl td.stc span{display:block;font-size:11px;font-weight:400;color:var(--muted);}
+.rtbl td.hrs-cell{font-size:13px;font-weight:700;color:var(--teal3);background:#f0fdf8;padding:4px 8px;}
+.rc-btn{width:54px;height:32px;border:none;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;background:#f1f5f9;color:var(--muted);display:block;margin:auto;}
+.rc-btn:hover{background:var(--teal-pale);color:var(--teal3);}
+.rc-btn.s9up9{background:#dbeafe;color:#1e40af;}
+.rc-btn.s9up3{background:#ede9fe;color:#5b21b6;}
+.rc-btn.s11-9{background:#d1fae5;color:#065f46;}
+.rc-btn.s10-5{background:#fef3c7;color:#92400e;}
+.rc-btn.s11-7{background:#fef9c3;color:#854d0e;}
+.rc-btn.s9-3{background:#e0fdf4;color:#065f46;}
+.rc-btn.sal{background:#fce7f3;color:#9d174d;}
+.rc-btn.sdo{background:#f1f5f9;color:#64748b;}
+.rc-btn.sbh{background:#fee2e2;color:#991b1b;}
+.rc-btn.str{background:#ede9fe;color:#5b21b6;}
+.shift-popup{position:fixed;background:var(--white);border-radius:16px;box-shadow:0 12px 48px rgba(12,26,46,.22);padding:16px;z-index:3000;display:none;width:300px;}
+.shift-popup.open{display:block;}
+.sp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.sp-btn{padding:12px 8px;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;text-align:center;}
+.sp-btn .sp-code{font-size:15px;display:block;font-family:'JetBrains Mono',monospace;}
+.sp-btn .sp-lbl{font-size:10px;opacity:.75;display:block;font-family:'Sora',sans-serif;margin-top:3px;}
+.sp-clear{width:100%;padding:9px;border:1.5px dashed var(--border);border-radius:8px;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;}
+.sp-close{position:absolute;top:12px;right:14px;background:var(--bg);border:none;width:26px;height:26px;border-radius:50%;font-size:16px;color:var(--muted);cursor:pointer;}
+
+/* FINANCE */
+.fbal{background:linear-gradient(135deg,var(--teal3),var(--teal));border-radius:var(--r);padding:22px;color:#fff;margin-bottom:16px;}
+.fbal .fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.75;}
+.fbal .fa{font-size:38px;font-weight:800;letter-spacing:-2px;margin:4px 0 2px;}
+
+/* ALERTS */
+.al{padding:12px 16px;border-radius:10px;font-size:13px;display:flex;gap:10px;margin-bottom:10px;}
+.al-r{background:var(--red-pale);color:#991b1b;border:1px solid #fecaca;}
+.al-a{background:var(--amber-pale);color:#92400e;border:1px solid #fde68a;}
+.al-g{background:var(--green-pale);color:#1a7a3d;border:1px solid #a7f3d0;}
+
+/* WORKER VIEW */
+.sw-welcome{background:linear-gradient(135deg,var(--ink),var(--ink2));border-radius:var(--r-lg);padding:24px;color:#fff;margin-bottom:20px;}
+.sw-welcome h2{font-size:20px;font-weight:800;}
+.sw-welcome p{font-size:13px;opacity:.6;margin-top:4px;}
+.quick-btns{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}
+.qb{background:var(--white);border-radius:var(--r);padding:20px;box-shadow:var(--sh);cursor:pointer;transition:all .2s;border:2px solid transparent;text-align:center;}
+.qb:hover{border-color:var(--teal);box-shadow:var(--sh-md);}
+.qb .qi{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 8px;}
+.qb .ql{font-size:14px;font-weight:700;color:var(--ink);}
+.qb .qs{font-size:11px;color:var(--muted);}
+
+/* SEARCH */
+.srow{display:flex;align-items:center;gap:8px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:9px 13px;margin-bottom:14px;}
+.srow input{border:none;outline:none;font-family:inherit;font-size:13px;color:var(--ink);flex:1;background:none;}
+.frow2{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.frow2 select,.frow2 input[type=date]{padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:inherit;font-size:13px;color:var(--ink);outline:none;}
+
+/* EMPTY */
+.empty{text-align:center;padding:48px 20px;color:var(--muted);}
+.empty p{font-size:14px;}
+
+/* MONTH NAV */
+.mnav{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.mnav span{font-size:14px;font-weight:700;color:var(--ink);min-width:160px;text-align:center;}
+
+/* EMAR */
+.emar-tabs{display:flex;gap:4px;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:16px;}
+.emar-tab{flex:1;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;font-family:inherit;color:var(--muted);transition:all .15s;}
+.emar-tab.on{background:var(--white);color:var(--teal);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.emar-shift-view{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+.emar-med-card{background:var(--white);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+.emar-status-bar{height:4px;}
+.emar-status-bar.morning{background:var(--blue);}
+.emar-status-bar.afternoon{background:#ca8a04;}
+.emar-status-bar.evening{background:var(--green);}
+.emar-status-bar.night{background:#f59e0b;}
+.emar-status-bar.overdue{background:var(--red);}
+.emar-med-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);}
+.emar-med-name{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px;}
+.emar-med-detail{font-size:12px;color:var(--muted);}
+.emar-times{padding:10px 16px;}
+.emar-time-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f7fb;}
+.emar-time-row:last-child{border-bottom:none;}
+.emar-time-lbl{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);min-width:50px;}
+.emar-give-btn{padding:6px 14px;border:none;border-radius:6px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+.emar-give-btn.due{background:var(--green-pale);color:#065f46;}
+.emar-give-btn.due:hover{background:var(--green);color:#fff;}
+.emar-give-btn.overdue{background:var(--red-pale);color:#991b1b;}
+.emar-give-btn.given{background:var(--green-pale);color:#065f46;cursor:default;}
+.emar-give-btn.refused{background:var(--red-pale);color:#991b1b;cursor:default;}
+.emar-give-btn.pending{background:#f1f5f9;color:var(--muted);cursor:default;}
+.emar-critical-badge{background:var(--red-pale);color:#991b1b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;}
+
+/* MED STOCK */
+.msb{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:8px;}
+.msf{height:100%;border-radius:3px;}
+.mok{background:var(--green);}
+.mlw{background:var(--amber);}
+.mcr{background:var(--red);}
+.mcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;}
+
+/* CIW */
+.ciw-section{background:var(--white);border-radius:var(--r);padding:24px;box-shadow:var(--sh);margin-bottom:16px;}
+.ciw-section h3{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--teal-pale2);}
+.ciw-field{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5f7fb;font-size:13px;}
+.ciw-field:last-child{border-bottom:none;}
+.ciw-field .lbl{color:var(--muted);font-size:12px;}
+.ciw-field .val{font-weight:700;color:var(--ink);}
+
+@media(max-width:768px){
+  .sidebar{width:58px;}
+  .sb-logo h2,.sb-user,.sb-hsel,.ni span,.ng,.btn-logout span{display:none;}
+  .main{margin-left:58px;padding:14px;}
+  .g4,.g3{grid-template-columns:1fr 1fr;}
+  .g2{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <h2>Care<em>Sync</em></h2>
+  <div class="spinner"></div>
+</div>
+
+<!-- OFFLINE -->
+<div class="offline-bar" id="offline-bar">📵 You are offline — data saved locally and will sync when reconnected</div>
+
+<!-- AUTH -->
+<div id="auth" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>Care<em>Sync</em></h1>
+      <p>Wales Care Management</p>
+    </div>
+    <div id="auth-err" class="auth-err"></div>
+    <div class="f"><label>Email</label><input id="a-email" type="email" placeholder="you@caresync.wales" autocomplete="email"></div>
+    <div class="f"><label>Password</label><input id="a-pw" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn-auth" onclick="signIn()" id="signin-btn">Sign In</button>
+    <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:16px">Contact your manager to register an account</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sb-logo"><h2>Care<em>Sync</em></h2></div>
+    <div class="sb-user">
+      <div class="un" id="sb-n"></div>
+      <div class="ur" id="sb-r"></div>
+      <div class="uh" id="sb-h"></div>
+    </div>
+    <div class="sb-hsel" id="sb-hsel" style="display:none">
+      <select id="hsel" onchange="setHF(this.value)"><option value="all">All Houses</option></select>
+    </div>
+    <nav>
+      <div class="ng">Overview</div>
+      <div class="ni on" onclick="gp('dashboard',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span>Dashboard</span>
+      </div>
+      <div class="ng">Care</div>
+      <div class="ni" onclick="gp('sus',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span>Service Users</span>
+      </div>
+      <div class="ni" onclick="gp('mar',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        <span>eMAR</span>
+      </div>
+      <div class="ni" onclick="gp('medcount',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+        <span>Med Count</span>
+      </div>
+      <div class="ni" onclick="gp('dailylog',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        <span>Daily Log</span>
+      </div>
+      <div class="ni" onclick="gp('finances',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Finances</span>
+      </div>
+      <div class="ng mgr">Staff</div>
+      <div class="ni mgr" onclick="gp('rota',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span>Rota</span>
+      </div>
+      <div class="ni mgr" onclick="gp('staff',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span>Staff</span>
+      </div>
+      <div class="ng adm">Setup</div>
+      <div class="ni adm" onclick="gp('houses',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        <span>Houses</span>
+      </div>
+      <div class="ni adm" onclick="gp('ciw',this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span>CIW Return</span>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <button class="btn-logout" onclick="signOut()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        <span>Sign Out</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div class="pg on" id="pg-dashboard">
+      <div class="ph"><div><h1>Dashboard</h1><p id="ddate"></p></div></div>
+      <div id="sw-view" style="display:none">
+        <div class="sw-welcome">
+          <h2 id="sw-greet">Good morning!</h2>
+          <p id="sw-sub">Loading your shift...</p>
+        </div>
+        <div class="quick-btns">
+          <div class="qb" onclick="gp('mar',document.querySelector('.ni:nth-child(6)'))">
+            <div class="qi" style="background:var(--teal-pale)">💊</div>
+            <div class="ql">eMAR</div><div class="qs">Record medication</div>
+          </div>
+          <div class="qb" onclick="gp('dailylog',document.querySelector('.ni:nth-child(7)'))">
+            <div class="qi" style="background:var(--blue-pale)">📝</div>
+            <div class="ql">Daily Log</div><div class="qs">Write care notes</div>
+          </div>
+          <div class="qb" onclick="gp('medcount',document.querySelector('.ni:nth-child(5)'))">
+            <div class="qi" style="background:var(--amber-pale)">🔢</div>
+            <div class="ql">Med Count</div><div class="qs">Record stock count</div>
+          </div>
+          <div class="qb" onclick="gp('finances',document.querySelector('.ni:nth-child(8)'))">
+            <div class="qi" style="background:var(--green-pale)">💰</div>
+            <div class="ql">Finances</div><div class="qs">Log money spent</div>
+          </div>
+        </div>
+      </div>
+      <div id="mgr-view">
+        <div class="g4" style="margin-bottom:16px">
+          <div class="stat ct2"><div class="sl">Service Users</div><div class="sv" id="d-su">0</div><div class="ss">Active</div></div>
+          <div class="stat cg"><div class="sl">Meds Given</div><div class="sv" id="d-mg">0</div><div class="ss">Today</div></div>
+          <div class="stat cr"><div class="sl">Incidents</div><div class="sv" id="d-inc">0</div><div class="ss">This week</div></div>
+          <div class="stat ca"><div class="sl">Low Stock</div><div class="sv" id="d-ls">0</div><div class="ss">Medications</div></div>
+        </div>
+        <div class="g2">
+          <div class="card"><div class="ct">Alerts</div><div id="d-alerts"><div class="al al-g">✓ Loading...</div></div></div>
+          <div class="card"><div class="ct">Today's Shifts</div><div id="d-shifts"><div style="color:var(--muted);font-size:13px">Loading...</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SERVICE USERS -->
+    <div class="pg" id="pg-sus">
+      <div class="ph"><div><h1>Service Users</h1><p>Residents in your house</p></div><div id="su-add-btn"></div></div>
+      <div class="srow"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Search..." oninput="filterSUs(this.value)"></div>
+      <div id="su-list" class="sug"><div class="empty"><p>Loading service users...</p></div></div>
+    </div>
+
+    <!-- eMAR -->
+    <div class="pg" id="pg-mar">
+      <div class="ph">
+        <div><h1>eMAR</h1><p>Electronic Medication Administration Record</p></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="mar-su" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:inherit;font-size:13px;outline:none" onchange="renderMAR()"><option value="">Select service user...</option></select>
+          <button class="btn bt bsm" onclick="om('add-med-m')">+ Add Medication</button>
+        </div>
+      </div>
+      <div id="emar-alerts"></div>
+      <div class="emar-tabs">
+        <button class="emar-tab on" onclick="setEMARTab('shift',this)">📋 This Shift</button>
+        <button class="emar-tab" onclick="setEMARTab('month',this)">📅 Monthly View</button>
+        <button class="emar-tab" onclick="setEMARTab('audit',this)">🔍 Audit Trail</button>
+      </div>
+      <div id="emar-shift-content"><div class="empty"><p>Select a service user to view their medication schedule</p></div></div>
+      <div id="emar-month-content" style="display:none">
+        <div class="card">
+          <div class="mnav"><button class="btn bo bsm" onclick="chM(-1)">◀</button><span id="mar-lbl"></span><button class="btn bo bsm" onclick="chM(1)">▶</button></div>
+          <div id="mar-grid"><div class="empty"><p>Select a service user</p></div></div>
+        </div>
+      </div>
+      <div id="emar-audit-content" style="display:none">
+        <div class="card"><div class="ct">Audit Trail</div><div id="audit-list"></div></div>
+      </div>
+    </div>
+
+    <!-- MED COUNT -->
+    <div class="pg" id="pg-medcount">
+      <div class="ph"><div><h1>Medication Count</h1><p>Stock reconciliation</p></div><button class="btn bt bsm" onclick="om('med-count-m')">+ Record Count</button></div>
+      <div id="med-cards" class="mcards"><div class="empty"><p>Loading medications...</p></div></div>
+    </div>
+
+    <!-- DAILY LOG -->
+    <div class="pg" id="pg-dailylog">
+      <div class="ph"><div><h1>Daily Log</h1><p>Care notes and shift entries</p></div><button class="btn bt bsm" onclick="om('add-log-m')">+ New Entry</button></div>
+      <div class="frow2">
+        <select id="lsf" onchange="renderLogs()"><option value="">All Service Users</option></select>
+        <select id="lcf" onchange="renderLogs()"><option value="">All Categories</option><option>Mood</option><option>Personal Care</option><option>Food & Drink</option><option>Incident</option><option>Sleep</option><option>Activities</option></select>
+        <input type="date" id="ldf" onchange="renderLogs()">
+      </div>
+      <div id="log-list"><div class="empty"><p>Loading logs...</p></div></div>
+    </div>
+
+    <!-- FINANCES -->
+    <div class="pg" id="pg-finances">
+      <div class="ph"><div><h1>Finances</h1><p>Petty cash and service user spending</p></div><button class="btn bt bsm" onclick="om('add-fin-m')">+ Record Transaction</button></div>
+      <div class="frow2"><select id="fsf" onchange="renderFin()"><option value="">All Service Users</option></select></div>
+      <div id="fin-content"><div class="empty"><p>Loading finances...</p></div></div>
+    </div>
+
+    <!-- ROTA -->
+    <div class="pg" id="pg-rota">
+      <div class="ph">
+        <div><h1>Rota</h1><p>Monthly shift schedule — tap any cell to assign a shift</p></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="mnav" style="margin:0"><button class="btn bo bsm" onclick="chR(-1)">◀</button><span id="rota-lbl" style="font-size:13px;min-width:130px;text-align:center"></span><button class="btn bo bsm" onclick="chR(1)">▶</button></div>
+        </div>
+      </div>
+      <div class="card"><div id="rota-wrap"><div class="empty"><p>Loading rota...</p></div></div></div>
+    </div>
+
+    <!-- STAFF -->
+    <div class="pg" id="pg-staff">
+      <div class="ph"><div><h1>Staff</h1><p>Staff in your house</p></div><div id="staff-add-btn"></div></div>
+      <div class="card twrap"><table><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>House</th><th>Status</th></tr></thead><tbody id="staff-body"></tbody></table></div>
+    </div>
+
+    <!-- HOUSES -->
+    <div class="pg" id="pg-houses">
+      <div class="ph"><div><h1>Houses</h1><p>All care locations</p></div><button class="btn bt bsm" onclick="om('add-house-m')">+ Add House</button></div>
+      <div id="houses-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"><div class="empty"><p>Loading houses...</p></div></div>
+    </div>
+
+    <!-- CIW -->
+    <div class="pg" id="pg-ciw">
+      <div class="ph"><div><h1>CIW Annual Return</h1><p>Auto-generated from your CareSync data</p></div><button class="btn bt bsm" onclick="exportCIW()">⬇ Export</button></div>
+      <div id="ciw-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SHIFT PICKER POPUP -->
+<div class="shift-popup" id="shift-popup">
+  <button class="sp-close" onclick="closeShiftPicker()">×</button>
+  <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;padding-right:24px" id="sp-title">Choose shift</div>
+  <div class="sp-grid" id="sp-grid"></div>
+  <button class="sp-clear" onclick="clearShiftCell()">✕ Clear this day</button>
+</div>
+
+<!-- MODALS -->
+<div class="ovl" id="add-su-m"><div class="modal">
+  <div class="mh"><h3>Add Service User</h3><button class="mc" onclick="cm('add-su-m')">×</button></div>
+  <div class="frow"><div class="f"><label>First Name</label><input id="su-fn" type="text"></div><div class="f"><label>Last Name</label><input id="su-ln" type="text"></div></div>
+  <div class="frow"><div class="f"><label>Date of Birth</label><input id="su-dob" type="date"></div><div class="f"><label>Room</label><input id="su-rm" type="text" placeholder="Room 3"></div></div>
+  <div class="f" id="su-hf"><label>House</label><select id="su-hs"></select></div>
+  <div class="f"><label>Care Needs</label><textarea id="su-nd" style="min-height:70px"></textarea></div>
+  <div class="mf"><button class="btn bo" onclick="cm('add-su-m')">Cancel</button><button class="btn bt" onclick="addSU()">Add</button></div>
+</div></div>
+
+<div class="ovl" id="add-house-m"><div class="modal">
+  <div class="mh"><h3>Add House</h3><button class="mc" onclick="cm('add-house-m')">×</button></div>
+  <div class="f"><label>House Name</label><input id="hn" type="text"></div>
+  <div class="f"><label>Address</label><input id="ha" type="text"></div>
+  <div class="frow"><div class="f"><label>Phone</label><input id="hp" type="tel"></div><div class="f"><label>House Email</label><input id="he" type="email"></div></div>
+  <div class="f"><label>Pharmacy Email</label><input id="hpe" type="email"></div>
+  <div class="mf"><button class="btn bo" onclick="cm('add-house-m')">Cancel</button><button class="btn bt" onclick="addHouse()">Add House</button></div>
+</div></div>
+
+<div class="ovl" id="add-staff-m"><div class="modal">
+  <div class="mh"><h3>Add Staff Member</h3><button class="mc" onclick="cm('add-staff-m')">×</button></div>
+  <div class="frow"><div class="f"><label>First Name</label><input id="st-fn" type="text"></div><div class="f"><label>Last Name</label><input id="st-ln" type="text"></div></div>
+  <div class="f"><label>Email</label><input id="st-em" type="email"></div>
+  <div class="frow">
+    <div class="f"><label>Role</label><select id="st-ro"><option value="manager">House Manager</option><option value="worker" selected>Support Worker</option></select></div>
+    <div class="f"><label>House</label><select id="st-hs"></select></div>
+  </div>
+  <div class="f"><label>Temporary Password</label><input id="st-pw" type="text" placeholder="They will be asked to change it"></div>
+  <div class="mf"><button class="btn bo" onclick="cm('add-staff-m')">Cancel</button><button class="btn bt" onclick="addStaff()">Add Staff</button></div>
+</div></div>
+
+<div class="ovl" id="add-med-m"><div class="modal">
+  <div class="mh"><h3>Add Medication</h3><button class="mc" onclick="cm('add-med-m')">×</button></div>
+  <div class="f"><label>Medication Name</label><input id="md-nm" type="text" placeholder="Metformin 500mg"></div>
+  <div class="frow"><div class="f"><label>Dose</label><input id="md-ds" type="text" placeholder="1 tablet"></div>
+  <div class="f"><label>Type</label><select id="md-ty"><option value="scheduled">Scheduled</option><option value="prn">PRN (as required)</option></select></div></div>
+  <div class="f"><label>Administration Times <span style="font-size:10px;color:var(--muted);font-weight:400">(colours auto-assign)</span></label>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="time" id="med-time-input" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none">
+      <button class="btn bt bsm" type="button" onclick="addMedTime()">+ Add</button>
+    </div>
+    <div id="med-times-list" style="display:flex;gap:6px;flex-wrap:wrap;min-height:28px"></div>
+  </div>
+  <div class="frow">
+    <div class="f"><label>Current Stock</label><input id="md-st" type="number" min="0" placeholder="28"></div>
+    <div class="f"><label>Reorder at</label><input id="md-reorder" type="number" min="1" placeholder="7"></div>
+  </div>
+  <div class="f"><label>Instructions</label><textarea id="md-nt" style="min-height:55px" placeholder="Take with food..."></textarea></div>
+  <div class="mf"><button class="btn bo" onclick="cm('add-med-m')">Cancel</button><button class="btn bt" onclick="addMed()">Add Medication</button></div>
+</div></div>
+
+<div class="ovl" id="mar-act-m"><div class="modal" style="max-width:400px">
+  <div class="mh"><h3 id="ma-ti">Sign Administration</h3><button class="mc" onclick="cm('mar-act-m')">×</button></div>
+  <div id="ma-drug-info" style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;"></div>
+  <div class="f"><label>Action</label>
+    <div class="trow" id="ma-action-tags">
+      <div class="tag" onclick="togSingle(this,'ma-action-tags')">✓ Given</div>
+      <div class="tag" onclick="togSingle(this,'ma-action-tags')">✗ Refused</div>
+      <div class="tag" onclick="togSingle(this,'ma-action-tags')">— N/A</div>
+    </div>
+  </div>
+  <div class="f" id="ma-refusal-wrap" style="display:none"><label>Reason</label>
+    <div class="trow" id="ma-refusal-tags">
+      <div class="tag" onclick="togSingle(this,'ma-refusal-tags')">Nauseous</div>
+      <div class="tag" onclick="togSingle(this,'ma-refusal-tags')">Asleep</div>
+      <div class="tag" onclick="togSingle(this,'ma-refusal-tags')">Declined</div>
+      <div class="tag" onclick="togSingle(this,'ma-refusal-tags')">Away</div>
+      <div class="tag" onclick="togSingle(this,'ma-refusal-tags')">Other</div>
+    </div>
+  </div>
+  <div class="f"><label>Your Initials</label><input id="ma-in" type="text" maxlength="4" placeholder="JS" style="text-transform:uppercase"></div>
+  <div class="f"><label>Notes (optional)</label><textarea id="ma-nt" style="min-height:55px"></textarea></div>
+  <div class="mf"><button class="btn bo" onclick="cm('mar-act-m')">Cancel</button><button class="btn bt" onclick="confMAR()">Confirm</button></div>
+</div></div>
+
+<div class="ovl" id="med-count-m"><div class="modal">
+  <div class="mh"><h3>Record Medication Count</h3><button class="mc" onclick="cm('med-count-m')">×</button></div>
+  <div class="f"><label>Service User</label><select id="mc-su" onchange="loadMedsDrop()"></select></div>
+  <div class="f"><label>Medication</label><select id="mc-md"></select></div>
+  <div class="frow">
+    <div class="f"><label>Count Type</label><select id="mc-ty"><option value="in">Stock In</option><option value="out">Stock Out</option><option value="audit">Audit Count</option></select></div>
+    <div class="f"><label>Quantity</label><input id="mc-qt" type="number" min="1" placeholder="0"></div>
+  </div>
+  <div class="f"><label>Notes</label><textarea id="mc-nt" style="min-height:55px"></textarea></div>
+  <div class="mf"><button class="btn bo" onclick="cm('med-count-m')">Cancel</button><button class="btn bt" onclick="recCount()">Record</button></div>
+</div></div>
+
+<div class="ovl" id="add-log-m"><div class="modal">
+  <div class="mh"><h3>New Daily Log Entry</h3><button class="mc" onclick="cm('add-log-m')">×</button></div>
+  <div class="f"><label>Service User</label><select id="lg-su"></select></div>
+  <div class="f"><label>Category</label>
+    <div class="trow" id="log-cats">
+      <div class="tag" onclick="tog(this)">😊 Mood</div>
+      <div class="tag" onclick="tog(this)">🛁 Personal Care</div>
+      <div class="tag" onclick="tog(this)">🍽 Food & Drink</div>
+      <div class="tag" onclick="tog(this)">⚠️ Incident</div>
+      <div class="tag" onclick="tog(this)">💤 Sleep</div>
+      <div class="tag" onclick="tog(this)">🎯 Activities</div>
+    </div>
+  </div>
+  <div class="f"><label>Notes</label><textarea id="lg-nt" style="min-height:100px" placeholder="Describe in detail..."></textarea></div>
+  <div class="frow"><div class="f"><label>Date</label><input id="lg-dt" type="date"></div><div class="f"><label>Time</label><input id="lg-tm" type="time"></div></div>
+  <div class="mf"><button class="btn bo" onclick="cm('add-log-m')">Cancel</button><button class="btn bt" onclick="addLog()">Save Entry</button></div>
+</div></div>
+
+<div class="ovl" id="add-fin-m"><div class="modal">
+  <div class="mh"><h3>Record Transaction</h3><button class="mc" onclick="cm('add-fin-m')">×</button></div>
+  <div class="f"><label>Service User</label><select id="fn-su"></select></div>
+  <div class="f"><label>Amount (£)</label><input id="fn-am" type="number" step="0.01" min="0" placeholder="0.00"></div>
+  <div class="f"><label>Category</label>
+    <div class="trow" id="fin-cats">
+      <div class="tag" onclick="togSingle(this,'fin-cats')">🛒 Shopping</div>
+      <div class="tag" onclick="togSingle(this,'fin-cats')">🎯 Activities</div>
+      <div class="tag" onclick="togSingle(this,'fin-cats')">🚌 Transport</div>
+      <div class="tag" onclick="togSingle(this,'fin-cats')">🍽 Food & Drink</div>
+      <div class="tag" onclick="togSingle(this,'fin-cats')">🧴 Personal items</div>
+      <div class="tag" onclick="togSingle(this,'fin-cats')">📦 Other</div>
+    </div>
+  </div>
+  <div class="f"><label>Description</label><input id="fn-ds" type="text"></div>
+  <div class="f"><label>Where</label><input id="fn-wh" type="text" placeholder="Tesco, Bangor"></div>
+  <div class="f"><label>Who accompanied</label><input id="fn-wo" type="text"></div>
+  <div class="frow"><div class="f"><label>Date</label><input id="fn-dt" type="date"></div><div class="f"><label>Receipt Ref</label><input id="fn-rf" type="text"></div></div>
+  <div class="mf"><button class="btn bo" onclick="cm('add-fin-m')">Cancel</button><button class="btn bt" onclick="addFin()">Save</button></div>
+</div></div>
+
+<script>
+// ══════════════════════════════════════════
+// SUPABASE INIT
+// ══════════════════════════════════════════
+const SUPABASE_URL = 'https://ekmzochqwavvgybxitkz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVrbXpvY2hxd2F2dmd5YnhpdGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyOTA0MjIsImV4cCI6MjA5Mjg2NjQyMn0.gZcnZx8nKOCTyp8Wd_MjJSg3MuZL8kGgVPFQnbCyI3E';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let CU = null, CUProfile = null;
+let houses = [], sus = [], staff = [], meds = [], logs = [], fins = [], rotaData = {}, marRecords = [], medCounts = [];
+let HF = 'all', marM = new Date(), rotaM = new Date();
+let emarTab = 'shift', pendMAR = {}, medTimesList = [], activeRotaCell = {};
+
+const isA = () => CUProfile?.role === 'admin';
+const isM = () => CUProfile?.role === 'manager';
+const isW = () => CUProfile?.role === 'worker';
+const canMgr = () => isA() || isM();
+const rl = r => ({admin:'Super Admin',manager:'House Manager',worker:'Support Worker'}[r]||r);
+
+function td() { return new Date().toISOString().split('T')[0]; }
+function fmt(t) {
+  if(!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  const ap = h>=12?'pm':'am'; const h12 = h>12?h-12:h===0?12:h;
+  return m===0?`${h12}${ap}`:`${h12}:${String(m).padStart(2,'0')}${ap}`;
+}
+function getSlot(time) {
+  if(!time||time==='PRN') return {cls:'slot-prn',badge:'background:#8b5cf6;color:#fff',color:'#f5f3ff',tc:'#5b21b6'};
+  const h = parseInt(time.split(':')[0]);
+  if(h>=6&&h<12)  return {cls:'slot-morning',  badge:'background:#2563eb;color:#fff',color:'#dbeafe',tc:'#1e40af'};
+  if(h>=12&&h<16) return {cls:'slot-afternoon', badge:'background:#ca8a04;color:#fff',color:'#fef9c3',tc:'#854d0e'};
+  if(h>=16&&h<20) return {cls:'slot-evening',   badge:'background:#16a34a;color:#fff',color:'#dcfce7',tc:'#15803d'};
+  if(h>=20)       return {cls:'slot-night',      badge:'background:#ea580c;color:#fff',color:'#fed7aa',tc:'#9a3412'};
+  return {cls:'slot-early',badge:'background:#64748b;color:#fff',color:'#f1f5f9',tc:'#475569'};
+}
+
+function scopeSUs() {
+  if(isA()) return HF==='all' ? sus : sus.filter(s=>s.house_id===HF);
+  return sus.filter(s=>s.house_id===CUProfile?.house_id);
+}
+function scopeStaff() {
+  if(isA()) return HF==='all' ? staff : staff.filter(s=>s.house_id===HF);
+  return staff.filter(s=>s.house_id===CUProfile?.house_id);
+}
+function scopeHouseId() {
+  if(isA()) return HF==='all' ? null : HF;
+  return CUProfile?.house_id;
+}
+
+// ══════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) {
+    await loadProfile(session.user);
+  } else {
+    showAuth();
+  }
+  window.addEventListener('online', () => document.getElementById('offline-bar').classList.remove('show'));
+  window.addEventListener('offline', () => document.getElementById('offline-bar').classList.add('show'));
+}
+
+async function loadProfile(user) {
+  const { data } = await sb.from('staff').select('*').eq('email', user.email).single();
+  if(!data) { showAuth(); return; }
+  CU = user; CUProfile = data;
+  await loadAllData();
+  startApp();
+}
+
+async function signIn() {
+  const email = document.getElementById('a-email').value.trim();
+  const pw = document.getElementById('a-pw').value;
+  const btn = document.getElementById('signin-btn');
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if(error) {
+    document.getElementById('auth-err').style.display = 'block';
+    document.getElementById('auth-err').textContent = 'Invalid email or password. Contact your manager.';
+    btn.textContent = 'Sign In'; btn.disabled = false;
+    return;
+  }
+  const { data: { session } } = await sb.auth.getSession();
+  await loadProfile(session.user);
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  CU = null; CUProfile = null;
+  document.getElementById('app').style.display = 'none';
+  showAuth();
+}
+
+function showAuth() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('auth').style.display = 'flex';
+}
+
+// ══════════════════════════════════════════
+// DATA LOADING
+// ══════════════════════════════════════════
+async function loadAllData() {
+  const [h, s, su, m, l, f, mr, mc] = await Promise.all([
+    sb.from('houses').select('*'),
+    sb.from('staff').select('*'),
+    sb.from('service_users').select('*').eq('is_active', true),
+    sb.from('medications').select('*').eq('is_active', true),
+    sb.from('daily_logs').select('*').order('log_date', {ascending:false}).limit(200),
+    sb.from('finances').select('*').order('transaction_date', {ascending:false}),
+    sb.from('mar_records').select('*').gte('admin_date', new Date(Date.now()-30*24*60*60*1000).toISOString().split('T')[0]),
+    sb.from('med_counts').select('*').order('created_at', {ascending:false}).limit(100),
+  ]);
+  houses = h.data||[]; staff = s.data||[]; sus = su.data||[];
+  meds = m.data||[]; logs = l.data||[]; fins = f.data||[];
+  marRecords = mr.data||[]; medCounts = mc.data||[];
+}
+
+async function reload() { await loadAllData(); renderAll(); }
+
+// ══════════════════════════════════════════
+// APP START
+// ══════════════════════════════════════════
+function startApp() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('auth').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('sb-n').textContent = CUProfile.name;
+  document.getElementById('sb-r').textContent = rl(CUProfile.role);
+  const h = houses.find(x=>x.id===CUProfile.house_id);
+  document.getElementById('sb-h').textContent = h?.name||'';
+  document.getElementById('sb-hsel').style.display = isA()?'':'none';
+  if(isA()) populateHouseSel();
+  document.querySelectorAll('.adm').forEach(el=>el.style.display=isA()?'':'none');
+  document.querySelectorAll('.mgr').forEach(el=>el.style.display=isW()?'none':'');
+  document.getElementById('lg-dt').value = td();
+  document.getElementById('lg-tm').value = new Date().toTimeString().slice(0,5);
+  document.getElementById('fn-dt').value = td();
+  document.getElementById('ddate').textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  updMLabels(); renderAll();
+}
+
+function renderAll() {
+  renderDash(); renderSUs(); renderMedCount(); renderLogs(); renderFin(); renderRota(); renderStaff(); renderHouses();
+  populateSUDrops();
+}
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function gp(page, el) {
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  document.getElementById('pg-'+page)?.classList.add('on');
+  if(el) el.classList.add('on');
+  if(page==='mar'){populateSUDrop('mar-su',true);renderMAR();}
+  if(page==='rota') renderRota();
+  if(page==='medcount') renderMedCount();
+  if(page==='dailylog') renderLogs();
+  if(page==='finances') renderFin();
+  if(page==='staff') renderStaff();
+  if(page==='sus') renderSUs();
+  if(page==='ciw') renderCIW();
+}
+
+function setHF(v) { HF=v; renderAll(); }
+function populateHouseSel() {
+  const sel=document.getElementById('hsel');
+  sel.innerHTML='<option value="all">All Houses</option>';
+  houses.forEach(h=>{const o=document.createElement('option');o.value=h.id;o.textContent=h.name;sel.appendChild(o);});
+}
+
+// ══════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════
+function om(id) {
+  if(id==='add-su-m'){populateHouseDrop('su-hs');document.getElementById('su-hf').style.display=isA()?'':'none';}
+  if(id==='add-staff-m'){populateHouseDrop('st-hs');}
+  if(id==='add-log-m'){populateSUDrop('lg-su');resetTags('log-cats');}
+  if(id==='add-fin-m'){populateSUDrop('fn-su');resetTags('fin-cats');}
+  if(id==='add-med-m'){medTimesList=[];renderMedTimesList();}
+  if(id==='med-count-m'){populateSUDrop('mc-su');loadMedsDrop();}
+  document.getElementById(id).classList.add('on');
+}
+function cm(id){document.getElementById(id).classList.remove('on');}
+document.querySelectorAll('.ovl').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('on');}));
+function tog(el){el.classList.toggle('on');}
+function togSingle(el,cid){document.querySelectorAll('#'+cid+' .tag').forEach(t=>t.classList.remove('on'));el.classList.add('on');}
+function resetTags(id){document.querySelectorAll('#'+id+' .tag').forEach(t=>t.classList.remove('on'));}
+function getTags(id){return Array.from(document.querySelectorAll('#'+id+' .tag.on')).map(t=>t.textContent.replace(/^[^\s]+\s/,'').trim());}
+function getSingle(id){return getTags(id)[0]||'';}
+
+function populateHouseDrop(id) {
+  const sel=document.getElementById(id);if(!sel)return;sel.innerHTML='';
+  const hs = isA()?houses:houses.filter(h=>h.id===CUProfile?.house_id);
+  hs.forEach(h=>{const o=document.createElement('option');o.value=h.id;o.textContent=h.name;sel.appendChild(o);});
+}
+function populateSUDrop(id, blank) {
+  const sel=document.getElementById(id);if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML=blank?'<option value="">Select service user...</option>':'';
+  scopeSUs().forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.fname+' '+s.lname;sel.appendChild(o);});
+  if(cur)sel.value=cur;
+}
+function populateSUDrops() {
+  populateSUDrop('mar-su',true);
+  ['lsf','fsf'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">All Service Users</option>';
+    scopeSUs().forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.fname+' '+s.lname;sel.appendChild(o);});
+    if(cur)sel.value=cur;
+  });
+}
+function loadMedsDrop() {
+  const suId=document.getElementById('mc-su')?.value;
+  const sel=document.getElementById('mc-md');if(!sel)return;
+  sel.innerHTML='';
+  meds.filter(m=>m.service_user_id===suId).forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.name;sel.appendChild(o);});
+}
+
+// ══════════════════════════════════════════
+// HOUSES
+// ══════════════════════════════════════════
+async function addHouse() {
+  const name=document.getElementById('hn').value.trim();
+  if(!name){alert('Enter house name');return;}
+  const {data,error}=await sb.from('houses').insert({name,address:document.getElementById('ha').value.trim(),phone:document.getElementById('hp').value.trim(),email:document.getElementById('he').value.trim(),pharmacy_email:document.getElementById('hpe').value.trim()}).select().single();
+  if(error){alert('Error: '+error.message);return;}
+  houses.push(data);renderHouses();populateHouseSel();cm('add-house-m');
+  ['hn','ha','hp','he','hpe'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+}
+function renderHouses() {
+  const el=document.getElementById('houses-grid');if(!el)return;
+  if(!houses.length){el.innerHTML='<div class="empty"><p>No houses yet</p></div>';return;}
+  el.innerHTML=houses.map(h=>{
+    const sc=sus.filter(s=>s.house_id===h.id).length;
+    const stc=staff.filter(s=>s.house_id===h.id).length;
+    return`<div class="card"><div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:4px">${h.name}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${h.address||''}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span class="bdg bt2">${sc} service users</span><span class="bdg bgy">${stc} staff</span></div>
+    ${h.email?`<div style="font-size:11px;color:var(--muted)">📧 ${h.email}</div>`:''}
+    ${h.pharmacy_email?`<div style="font-size:11px;color:var(--muted)">💊 ${h.pharmacy_email}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// SERVICE USERS
+// ══════════════════════════════════════════
+async function addSU() {
+  const fn=document.getElementById('su-fn').value.trim();
+  const ln=document.getElementById('su-ln').value.trim();
+  if(!fn||!ln){alert('Enter name');return;}
+  const house_id=isA()?document.getElementById('su-hs').value:CUProfile.house_id;
+  const {data,error}=await sb.from('service_users').insert({fname:fn,lname:ln,dob:document.getElementById('su-dob').value||null,room:document.getElementById('su-rm').value.trim(),house_id,needs:document.getElementById('su-nd').value.trim()}).select().single();
+  if(error){alert('Error: '+error.message);return;}
+  sus.push(data);renderSUs();populateSUDrops();cm('add-su-m');
+  ['su-fn','su-ln','su-dob','su-rm','su-nd'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+}
+function filterSUs(q) { renderSUs(q); }
+function renderSUs(q='') {
+  const el=document.getElementById('su-list');if(!el)return;
+  const ab=document.getElementById('su-add-btn');
+  if(ab)ab.innerHTML=canMgr()?`<button class="btn bt bsm" onclick="om('add-su-m')">+ Add Service User</button>`:'';
+  let list=scopeSUs();
+  if(q)list=list.filter(s=>(s.fname+' '+s.lname).toLowerCase().includes(q.toLowerCase()));
+  if(!list.length){el.innerHTML='<div class="empty"><p>No service users found</p></div>';return;}
+  el.innerHTML=list.map(su=>{
+    const h=houses.find(x=>x.id===su.house_id);
+    const ini=(su.fname[0]||'')+(su.lname[0]||'');
+    const age=su.dob?Math.floor((new Date()-new Date(su.dob))/31557600000):'';
+    return`<div class="suc"><div class="av">${ini}</div><div>
+    <div style="font-size:14px;font-weight:700;color:var(--ink)">${su.fname} ${su.lname}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:2px">${age?age+' yrs · ':''} ${h?.name||''} ${su.room?'· '+su.room:''}</div>
+    ${su.needs?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${su.needs}</div>`:''}
+    </div></div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// STAFF
+// ══════════════════════════════════════════
+async function addStaff() {
+  const fn=document.getElementById('st-fn').value.trim();
+  const ln=document.getElementById('st-ln').value.trim();
+  const email=document.getElementById('st-em').value.trim().toLowerCase();
+  const pw=document.getElementById('st-pw').value.trim();
+  if(!fn||!ln||!email||!pw){alert('Fill all fields');return;}
+  // Create auth user via Supabase Admin (requires service role - use edge function in production)
+  // For now just create staff record
+  const house_id=isA()?document.getElementById('st-hs').value:CUProfile.house_id;
+  const {data,error}=await sb.from('staff').insert({name:fn+' '+ln,email,role:document.getElementById('st-ro').value,house_id}).select().single();
+  if(error){alert('Error: '+error.message);return;}
+  staff.push(data);renderStaff();cm('add-staff-m');
+  ['st-fn','st-ln','st-em','st-pw'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+}
+function renderStaff() {
+  const tbody=document.getElementById('staff-body');if(!tbody)return;
+  const ab=document.getElementById('staff-add-btn');
+  if(ab)ab.innerHTML=canMgr()?`<button class="btn bt bsm" onclick="om('add-staff-m')">+ Add Staff</button>`:'';
+  if(isW()){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Access restricted</td></tr>';return;}
+  const list=scopeStaff();
+  if(!list.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">No staff found</td></tr>';return;}
+  tbody.innerHTML=list.map(u=>{
+    const h=houses.find(x=>x.id===u.house_id);
+    const rc=u.role==='admin'?'bgy':u.role==='manager'?'bt2':'bgy';
+    return`<tr><td><strong>${u.name}</strong></td><td><span class="bdg ${rc}">${rl(u.role)}</span></td>
+    <td style="color:var(--muted)">${u.email}</td><td>${h?.name||'—'}</td>
+    <td><span class="bdg bg2">Active</span></td></tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// MEDICATIONS
+// ══════════════════════════════════════════
+function addMedTime() {
+  const t=document.getElementById('med-time-input').value;
+  if(!t){alert('Select a time');return;}
+  if(medTimesList.includes(t)){alert('Already added');return;}
+  medTimesList.push(t);medTimesList.sort();renderMedTimesList();
+  document.getElementById('med-time-input').value='';
+}
+function removeMedTime(t){medTimesList=medTimesList.filter(x=>x!==t);renderMedTimesList();}
+function renderMedTimesList(){
+  const el=document.getElementById('med-times-list');if(!el)return;
+  if(!medTimesList.length){el.innerHTML='<div style="font-size:12px;color:var(--muted)">No times added</div>';return;}
+  el.innerHTML=medTimesList.map(t=>{const s=getSlot(t);return`<div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;background:${s.color};color:${s.tc}">${fmt(t)}<span onclick="removeMedTime('${t}')" style="cursor:pointer;opacity:.7">×</span></div>`;}).join('');
+}
+async function addMed(){
+  const suId=document.getElementById('mar-su').value;
+  if(!suId){alert('Select a service user first');return;}
+  const name=document.getElementById('md-nm').value.trim();
+  if(!name){alert('Enter medication name');return;}
+  const type=document.getElementById('md-ty').value;
+  if(type==='scheduled'&&!medTimesList.length){alert('Add at least one time');return;}
+  const {data,error}=await sb.from('medications').insert({
+    service_user_id:suId,name,dose:document.getElementById('md-ds').value.trim(),
+    type,times:medTimesList,stock:parseInt(document.getElementById('md-st').value)||0,
+    reorder_at:parseInt(document.getElementById('md-reorder').value)||7,
+    notes:document.getElementById('md-nt').value.trim()
+  }).select().single();
+  if(error){alert('Error: '+error.message);return;}
+  meds.push(data);renderMAR();renderMedCount();cm('add-med-m');
+  ['md-nm','md-ds','md-st','md-reorder','md-nt'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  medTimesList=[];renderMedTimesList();
+}
+
+// ══════════════════════════════════════════
+// eMAR
+// ══════════════════════════════════════════
+function updMLabels(){
+  const el=document.getElementById('mar-lbl');if(el)el.textContent=marM.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const rl2=document.getElementById('rota-lbl');if(rl2)rl2.textContent=rotaM.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+}
+function chM(d){marM=new Date(marM.getFullYear(),marM.getMonth()+d,1);updMLabels();renderMonthMAR();}
+function chR(d){rotaM=new Date(rotaM.getFullYear(),rotaM.getMonth()+d,1);updMLabels();renderRota();}
+
+function setEMARTab(tab,el){
+  emarTab=tab;
+  document.querySelectorAll('.emar-tab').forEach(t=>t.classList.remove('on'));
+  if(el)el.classList.add('on');
+  document.getElementById('emar-shift-content').style.display=tab==='shift'?'':'none';
+  document.getElementById('emar-month-content').style.display=tab==='month'?'':'none';
+  document.getElementById('emar-audit-content').style.display=tab==='audit'?'':'none';
+  const suId=document.getElementById('mar-su').value;
+  if(tab==='shift')renderShiftView(suId);
+  if(tab==='month')renderMonthMAR();
+  if(tab==='audit')renderAuditTrail(suId);
+}
+
+function renderMAR(){
+  const suId=document.getElementById('mar-su').value;
+  renderEMARAlerts(suId);
+  if(emarTab==='shift')renderShiftView(suId);
+  else if(emarTab==='month')renderMonthMAR();
+  else if(emarTab==='audit')renderAuditTrail(suId);
+}
+
+const CRITICAL_MEDS=['levetiracetam','epilim','insulin','metformin','warfarin','digoxin','lithium'];
+
+function renderEMARAlerts(suId){
+  const el=document.getElementById('emar-alerts');if(!el||!suId)return;
+  const now=new Date();const nowMins=now.getHours()*60+now.getMinutes();const today=td();
+  const alerts=[];
+  meds.filter(m=>m.service_user_id===suId&&m.type==='scheduled').forEach(med=>{
+    const isCrit=CRITICAL_MEDS.some(c=>med.name.toLowerCase().includes(c));
+    (med.times||[]).forEach(time=>{
+      const [h,mn]=time.split(':').map(Number);
+      const timeMins=h*60+mn;
+      const rec=marRecords.find(r=>r.medication_id===med.id&&r.admin_time===time&&r.admin_date===today);
+      if(!rec&&nowMins>timeMins+60&&isCrit)
+        alerts.push(`<div class="al al-r">🚨 CRITICAL MISSED: <strong>${med.name}</strong> was due at ${fmt(time)}</div>`);
+      else if(!rec&&nowMins>timeMins+60)
+        alerts.push(`<div class="al al-a">⚠️ <strong>${med.name}</strong> overdue — due at ${fmt(time)}</div>`);
+    });
+    if(med.stock<=(med.reorder_at||7))
+      alerts.push(`<div class="al al-a">📦 Low stock: <strong>${med.name}</strong> — ${med.stock} remaining</div>`);
+  });
+  el.innerHTML=alerts.join('');
+}
+
+function renderShiftView(suId){
+  const el=document.getElementById('emar-shift-content');if(!el)return;
+  if(!suId){el.innerHTML='<div class="empty"><p>Select a service user</p></div>';return;}
+  const suMeds=meds.filter(m=>m.service_user_id===suId&&m.type==='scheduled');
+  if(!suMeds.length){el.innerHTML='<div class="empty"><p>No scheduled medications. Click "+ Add Medication".</p></div>';return;}
+  const now=new Date();const nowMins=now.getHours()*60+now.getMinutes();const today=td();
+  let html='<div class="emar-shift-view">';
+  suMeds.forEach(med=>{
+    const isCrit=CRITICAL_MEDS.some(c=>med.name.toLowerCase().includes(c));
+    const slot=getSlot((med.times||[])[0]||'');
+    html+=`<div class="emar-med-card"><div class="emar-status-bar ${slot.cls}"></div>
+    <div class="emar-med-header">
+      <div class="emar-med-name">${med.name}${isCrit?' <span class="emar-critical-badge">⚠ CRITICAL</span>':''}</div>
+      <div class="emar-med-detail">${med.dose} · Stock: <strong style="color:${med.stock<=5?'var(--red)':med.stock<=10?'var(--amber)':'var(--green)'}">${med.stock}</strong></div>
+      ${med.notes?`<div style="font-size:11px;color:var(--muted);margin-top:3px;font-style:italic">${med.notes}</div>`:''}
+    </div><div class="emar-times">`;
+    (med.times||[]).forEach(time=>{
+      const [h,mn]=time.split(':').map(Number);const timeMins=h*60+mn;
+      const rec=marRecords.find(r=>r.medication_id===med.id&&r.admin_time===time&&r.admin_date===today);
+      let btnCls='pending',btnLbl=`Due ${fmt(time)}`;
+      if(rec){btnCls=rec.status;btnLbl=rec.status==='given'?`✓ Given (${rec.initials})`:rec.status==='refused'?'✗ Refused':'— N/A';}
+      else if(nowMins>timeMins+60){btnCls='overdue';btnLbl='⚠ OVERDUE';}
+      else if(nowMins>=timeMins-30){btnCls='due';btnLbl='▶ Give now';}
+      const canGive=!rec&&(btnCls==='due'||btnCls==='overdue');
+      html+=`<div class="emar-time-row"><span class="emar-time-lbl">${fmt(time)}</span>
+        <button class="emar-give-btn ${btnCls}" ${canGive?`onclick="openMARModal('${med.id}','${suId}','${med.name.replace(/'/g,"\\'")}','${time}','${med.dose.replace(/'/g,"\\'")}')"`:''}>${btnLbl}</button>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function openMARModal(medId,suId,medName,time,dose){
+  pendMAR={medId,suId,medName,time,dose};
+  document.getElementById('ma-ti').textContent='Sign Administration';
+  document.getElementById('ma-drug-info').innerHTML=`<div style="font-weight:700;color:var(--ink)">${medName}</div><div style="font-size:12px;color:var(--muted)">${dose} · ${fmt(time)}</div>`;
+  document.getElementById('ma-in').value='';document.getElementById('ma-nt').value='';
+  resetTags('ma-action-tags');resetTags('ma-refusal-tags');
+  document.getElementById('ma-refusal-wrap').style.display='none';
+  document.querySelectorAll('#ma-action-tags .tag').forEach(t=>{t.onclick=function(){togSingle(this,'ma-action-tags');document.getElementById('ma-refusal-wrap').style.display=this.textContent.includes('Refused')?'':'none';};});
+  document.getElementById('ma-confirm-btn')?document.getElementById('ma-confirm-btn').onclick=confMAR:null;
+  om('mar-act-m');
+}
+
+async function confMAR(){
+  const actionTag=document.querySelector('#ma-action-tags .tag.on');
+  if(!actionTag){alert('Select an action');return;}
+  const at=actionTag.textContent.trim();
+  const status=at.includes('Given')?'given':at.includes('Refused')?'refused':'na';
+  const initials=document.getElementById('ma-in').value.trim().toUpperCase();
+  if(!initials){alert('Enter your initials');return;}
+  const notes=document.getElementById('ma-nt').value.trim();
+  const refusal_reason=getSingle('ma-refusal-tags');
+  const {data,error}=await sb.from('mar_records').insert({
+    service_user_id:pendMAR.suId,medication_id:pendMAR.medId,
+    admin_time:pendMAR.time,admin_date:td(),
+    status,initials,notes,refusal_reason,
+    staff_id:CUProfile.id,is_critical:CRITICAL_MEDS.some(c=>pendMAR.medName.toLowerCase().includes(c))
+  }).select().single();
+  if(error){alert('Error saving: '+error.message);return;}
+  marRecords.push(data);
+  // Decrement stock
+  if(status==='given'){
+    const med=meds.find(m=>m.id===pendMAR.medId);
+    if(med){med.stock--;await sb.from('medications').update({stock:med.stock}).eq('id',med.id);}
+  }
+  renderMAR();renderMedCount();renderDash();cm('mar-act-m');
+}
+
+function renderMonthMAR(){
+  const suId=document.getElementById('mar-su').value;
+  const grid=document.getElementById('mar-grid');if(!grid)return;
+  updMLabels();
+  if(!suId){grid.innerHTML='<div class="empty"><p>Select a service user</p></div>';return;}
+  const su=sus.find(s=>s.id===suId);
+  const suMeds=meds.filter(m=>m.service_user_id===suId);
+  if(!suMeds.length){grid.innerHTML='<div class="empty"><p>No medications added</p></div>';return;}
+  const y=marM.getFullYear(),mo=marM.getMonth();
+  const days=new Date(y,mo+1,0).getDate();
+  const dns=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const monthStr=marM.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  let html=`<div class="mar-legend-row">
+    <div class="mar-leg-item"><div class="mar-leg-dot slot-morning"></div>Morning</div>
+    <div class="mar-leg-item"><div class="mar-leg-dot slot-afternoon"></div>Afternoon</div>
+    <div class="mar-leg-item"><div class="mar-leg-dot slot-evening"></div>Evening</div>
+    <div class="mar-leg-item"><div class="mar-leg-dot slot-night"></div>Night</div>
+    <div style="margin-left:auto;font-size:12px;font-weight:600;color:var(--ink)">${su?.fname} ${su?.lname} — ${monthStr}</div>
+  </div>
+  <div class="mar-real-wrap"><table class="mar-real-tbl"><thead><tr><th class="med-col">Medication / Dose / Time</th>`;
+  for(let d=1;d<=days;d++){const dt=new Date(y,mo,d);const wk=dt.getDay()===0||dt.getDay()===6;html+=`<th class="day-col ${wk?'wkd':''}">${d}<br><span style="font-size:8px;opacity:.7">${dns[dt.getDay()]}</span></th>`;}
+  html+=`</tr></thead><tbody>`;
+  suMeds.forEach((med,mi)=>{
+    const times=med.type==='prn'?['PRN']:med.times||[];
+    const bg=mi%2===0?'#ffffff':'#fafbfd';
+    times.forEach((time,ti)=>{
+      const slot=getSlot(time);
+      html+=`<tr>`;
+      if(ti===0){html+=`<td class="med-info" rowspan="${times.length*2}" style="background:${bg}">
+        <div style="font-size:12px;font-weight:700;color:var(--ink)">${med.name}</div>
+        <div style="font-size:11px;color:var(--muted)">${med.dose}</div>
+        <div style="margin-top:3px">${times.map(t=>{const s=getSlot(t);return`<span style="${s.badge};padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;display:inline-block;margin:1px">${fmt(t)}</span>`}).join('')}</div>
+        <div style="font-size:10px;color:${med.stock<=5?'var(--red)':med.stock<=10?'var(--amber)':'var(--muted)'};margin-top:3px">Stock: ${med.stock}</div>
+      </td>`;}
+      for(let d=1;d<=days;d++){
+        const ds=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const rec=marRecords.find(r=>r.medication_id===med.id&&r.admin_time===time&&r.admin_date===ds);
+        const fut=new Date(y,mo,d)>new Date();
+        let cell='';
+        if(rec?.status==='given')cell=`<span class="sign-cell">${rec.initials||'✓'}</span>`;
+        else if(rec?.status==='refused')cell=`<span class="sign-cell" style="color:var(--red)">R</span>`;
+        else if(rec?.status==='na')cell=`<span class="sign-cell" style="color:var(--muted)">–</span>`;
+        else if(!fut)cell=`<span class="sign-cell" style="color:#e2e8f0">·</span>`;
+        html+=`<td class="${slot.cls}" style="${!fut&&!rec?'cursor:pointer':''}" ${!fut&&!rec?`onclick="openMARModal('${med.id}','${suId}','${med.name.replace(/'/g,"\\'")}','${time}','${med.dose.replace(/'/g,"\\'")}')"`:''}><div>${cell}</div></td>`;
+      }
+      html+=`</tr>`;
+      // Row 2 — countersign
+      html+=`<tr>`;
+      for(let d=1;d<=days;d++){
+        const ds=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const rec=marRecords.find(r=>r.medication_id===med.id&&r.admin_time===time&&r.admin_date===ds);
+        html+=`<td class="${slot.cls}" style="border-top:1px dashed #cbd5e1"><div><span class="sign-cell" style="color:var(--muted);font-size:9px">${rec?.initials2||''}</span></div></td>`;
+      }
+      html+=`</tr>`;
+    });
+    html+=`<tr><td colspan="${days+1}" style="height:3px;background:#e2e8f0;padding:0"></td></tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  grid.innerHTML=html;
+}
+
+function renderAuditTrail(suId){
+  const el=document.getElementById('audit-list');if(!el)return;
+  let recs=suId?marRecords.filter(r=>r.service_user_id===suId):marRecords;
+  recs=[...recs].sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,50);
+  if(!recs.length){el.innerHTML='<div class="empty"><p>No records yet</p></div>';return;}
+  el.innerHTML=recs.map(r=>{
+    const med=meds.find(m=>m.id===r.medication_id);
+    return`<div style="padding:10px 0;border-bottom:1px solid #f5f7fb;font-size:13px">
+      <div style="display:flex;justify-content:space-between">
+        <div><strong>${med?.name||r.medication_id}</strong> <span class="bdg ${r.status==='given'?'bg2':r.status==='refused'?'br2':'bgy'}" style="font-size:10px">${r.status?.toUpperCase()}</span></div>
+        <span style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">${new Date(r.created_at).toLocaleString('en-GB')}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmt(r.admin_time)} · Initials: ${r.initials||'—'} ${r.refusal_reason?'· Reason: '+r.refusal_reason:''} ${r.notes?'· '+r.notes:''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// MED COUNT
+// ══════════════════════════════════════════
+async function recCount(){
+  const medId=document.getElementById('mc-md').value;
+  const suId=document.getElementById('mc-su').value;
+  const type=document.getElementById('mc-ty').value;
+  const qty=parseInt(document.getElementById('mc-qt').value)||0;
+  const notes=document.getElementById('mc-nt').value.trim();
+  if(!medId||!qty){alert('Select medication and enter quantity');return;}
+  const med=meds.find(m=>m.id===medId);if(!med)return;
+  const prev=med.stock;
+  if(type==='in')med.stock+=qty;
+  else if(type==='out')med.stock=Math.max(0,med.stock-qty);
+  else med.stock=qty;
+  await sb.from('medications').update({stock:med.stock}).eq('id',medId);
+  await sb.from('med_counts').insert({medication_id:medId,service_user_id:suId,count_type:type,quantity:qty,prev_stock:prev,new_stock:med.stock,notes,staff_id:CUProfile.id,staff_name:CUProfile.name});
+  medCounts.unshift({medication_id:medId,service_user_id:suId,count_type:type,quantity:qty,prev_stock:prev,new_stock:med.stock,notes,staff_name:CUProfile.name,created_at:new Date().toISOString()});
+  renderMedCount();renderDash();cm('med-count-m');
+  ['mc-qt','mc-nt'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+}
+function renderMedCount(){
+  const el=document.getElementById('med-cards');if(!el)return;
+  const suIds=scopeSUs().map(s=>s.id);
+  const list=meds.filter(m=>suIds.includes(m.service_user_id));
+  if(!list.length){el.innerHTML='<div class="empty"><p>No medications found</p></div>';return;}
+  el.innerHTML=list.map(med=>{
+    const su=sus.find(s=>s.id===med.service_user_id);
+    const max=60;const pct=Math.min(100,(med.stock/max)*100);
+    const fc=med.stock<=2?'mcr':med.stock<=(med.reorder_at||7)?'mlw':'mok';
+    const bc=med.stock<=2?'br2':med.stock<=(med.reorder_at||7)?'ba':'bg2';
+    const hist=medCounts.filter(c=>c.medication_id===med.id).slice(0,3);
+    return`<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+      <div><div style="font-size:14px;font-weight:700;color:var(--ink)">${med.name}</div>
+      <div style="font-size:12px;color:var(--muted)">${su?su.fname+' '+su.lname:''} · ${med.dose}</div></div>
+      <span class="bdg ${bc}">${med.stock} left</span></div>
+      <div class="msb"><div class="msf ${fc}" style="width:${pct}%"></div></div>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted)">
+        ${hist.map(h=>`<div style="padding:3px 0;border-bottom:1px solid var(--border)">${h.count_type?.toUpperCase()} ${h.quantity} — ${h.staff_name} — ${new Date(h.created_at).toLocaleDateString('en-GB')}</div>`).join('')}
+        ${!hist.length?'No count history yet':''}
+      </div></div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// DAILY LOG
+// ══════════════════════════════════════════
+async function addLog(){
+  const suId=document.getElementById('lg-su').value;
+  const notes=document.getElementById('lg-nt').value.trim();
+  const cats=getTags('log-cats');
+  if(!suId||!notes){alert('Select service user and add notes');return;}
+  const su=sus.find(s=>s.id===suId);
+  const {data,error}=await sb.from('daily_logs').insert({
+    service_user_id:suId,house_id:su?.house_id,categories:cats,notes,
+    log_date:document.getElementById('lg-dt').value,
+    log_time:document.getElementById('lg-tm').value,
+    staff_id:CUProfile.id,staff_name:CUProfile.name
+  }).select().single();
+  if(error){alert('Error: '+error.message);return;}
+  logs.unshift(data);renderLogs();renderDash();cm('add-log-m');
+  document.getElementById('lg-nt').value='';resetTags('log-cats');
+}
+function renderLogs(){
+  const el=document.getElementById('log-list');if(!el)return;
+  const suF=document.getElementById('lsf')?.value||'';
+  const catF=document.getElementById('lcf')?.value||'';
+  const dateF=document.getElementById('ldf')?.value||'';
+  const suIds=scopeSUs().map(s=>s.id);
+  const cutoff=isW()?new Date(Date.now()-7*24*60*60*1000):null;
+  let list=[...logs].filter(l=>suIds.includes(l.service_user_id));
+  if(cutoff)list=list.filter(l=>new Date(l.log_date)>=cutoff);
+  if(suF)list=list.filter(l=>l.service_user_id===suF);
+  if(catF)list=list.filter(l=>l.categories?.some(c=>c.toLowerCase().includes(catF.toLowerCase())));
+  if(dateF)list=list.filter(l=>l.log_date===dateF);
+  if(!list.length){el.innerHTML='<div class="empty"><p>No log entries found</p></div>';return;}
+  el.innerHTML=list.map(log=>{
+    const su=sus.find(s=>s.id===log.service_user_id);
+    const isInc=log.categories?.includes('Incident');
+    return`<div class="le ${isInc?'incident':''}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">${log.log_date} ${log.log_time||''}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">${su?su.fname+' '+su.lname:'Unknown'}</span>
+        <span style="font-size:12px;color:var(--muted)">by ${log.staff_name}</span>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${(log.categories||[]).map(c=>`<span class="bdg ${c==='Incident'?'br2':'bt2'}">${c}</span>`).join('')}</div>
+      <div style="font-size:13px;color:var(--ink3);line-height:1.6">${log.notes}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// FINANCES
+// ══════════════════════════════════════════
+async function addFin(){
+  const suId=document.getElementById('fn-su').value;
+  const amount=parseFloat(document.getElementById('fn-am').value)||0;
+  if(!suId||!amount){alert('Select service user and enter amount');return;}
+  const su=sus.find(s=>s.id===suId);
+  const category=getSingle('fin-cats');
+  const {data,error}=await sb.from('finances').insert({
+    service_user_id:suId,house_id:su?.house_id,amount,category,
+    description:document.getElementById('fn-ds').value.trim(),
+    location:document.getElementById('fn-wh').value.trim(),
+    accompanied_by:document.getElementById('fn-wo').value.trim(),
+    transaction_date:document.getElementById('fn-dt').value,
+    receipt_ref:document.getElementById('fn-rf').value.trim(),
+    staff_id:CUProfile.id,staff_name:CUProfile.name
+  }).select().single();
+  if(error){alert('Error: '+error.message);return;}
+  fins.unshift(data);renderFin();cm('add-fin-m');
+  ['fn-am','fn-ds','fn-wh','fn-wo','fn-rf'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  resetTags('fin-cats');
+}
+function renderFin(){
+  const el=document.getElementById('fin-content');if(!el)return;
+  const suF=document.getElementById('fsf')?.value||'';
+  const suIds=scopeSUs().map(s=>s.id);
+  let list=[...fins].filter(f=>suIds.includes(f.service_user_id));
+  if(suF)list=list.filter(f=>f.service_user_id===suF);
+  if(!list.length){el.innerHTML='<div class="empty"><p>No finance records found</p></div>';return;}
+  const groups={};
+  list.forEach(f=>{if(!groups[f.service_user_id])groups[f.service_user_id]=[];groups[f.service_user_id].push(f);});
+  let html='';
+  Object.entries(groups).forEach(([suId,recs])=>{
+    const su=sus.find(s=>s.id===suId);
+    const total=recs.reduce((s,f)=>s+parseFloat(f.amount),0);
+    html+=`<div style="margin-bottom:24px">
+      <div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px">${su?su.fname+' '+su.lname:'Unknown'}</div>
+      <div class="fbal"><div class="fl">Total Spent</div><div class="fa">£${total.toFixed(2)}</div><div style="font-size:12px;opacity:.7">${recs.length} transaction${recs.length!==1?'s':''}</div></div>
+      ${recs.map(f=>`<div class="card" style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div style="font-size:13px;font-weight:700;color:var(--ink)">${f.description||f.category||'Transaction'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${f.category} · ${f.location||'—'} · ${f.transaction_date}</div>
+          <div style="font-size:12px;color:var(--muted)">With: ${f.accompanied_by||'—'} ${f.receipt_ref?'· Ref: '+f.receipt_ref:''}</div>
+          <div style="font-size:11px;color:var(--muted)">By: ${f.staff_name}</div></div>
+          <div style="font-size:22px;font-weight:800;color:var(--ink)">£${parseFloat(f.amount).toFixed(2)}</div>
+        </div></div>`).join('')}
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ══════════════════════════════════════════
+// ROTA — DYNAMIC POPUP
+// ══════════════════════════════════════════
+const SHIFTS={
+  '9^9': {label:'9am–9am (Sleep-in)',hours:16,cls:'s9up9',color:'#dbeafe',tc:'#1e40af'},
+  '9^3': {label:'9am–3pm (Sleep-in)',hours:22,cls:'s9up3',color:'#ede9fe',tc:'#5b21b6'},
+  '11-9':{label:'11am–9pm',hours:10,cls:'s11-9',color:'#d1fae5',tc:'#065f46'},
+  '10-5':{label:'10am–5pm',hours:7, cls:'s10-5',color:'#fef3c7',tc:'#92400e'},
+  '11-7':{label:'11am–7pm',hours:8, cls:'s11-7',color:'#fef9c3',tc:'#854d0e'},
+  '9-3': {label:'9am–3pm', hours:6, cls:'s9-3', color:'#e0fdf4',tc:'#065f46'},
+  'AL':  {label:'Annual Leave',hours:0,cls:'sal',color:'#fce7f3',tc:'#9d174d'},
+  'DO':  {label:'Day Off',  hours:0, cls:'sdo',  color:'#f1f5f9',tc:'#64748b'},
+  'BH':  {label:'Bank Holiday',hours:0,cls:'sbh',color:'#fee2e2',tc:'#991b1b'},
+  'TR':  {label:'Training', hours:0, cls:'str',  color:'#ede9fe',tc:'#5b21b6'},
+};
+const UNLIMITED=['AL','DO','BH','TR'];
+const SLEEPIN=['9^9','9^3'];
+window._rotaConflicts={};
+
+function rotaKey(y,mo){return `${y}-${String(mo+1).padStart(2,'0')}`;}
+
+async function setRotaCell(staffId,ym,day,code){
+  const houseId=scopeHouseId()||houses[0]?.id;
+  const dateStr=`${ym}-${String(day).padStart(2,'0')}`;
+  const hours=SHIFTS[code]?.hours||0;
+  // Check if record exists
+  const existing=await sb.from('rota').select('id').eq('staff_id',staffId).eq('shift_date',dateStr).eq('house_id',houseId).single();
+  if(code){
+    if(existing.data){
+      await sb.from('rota').update({shift_code:code,shift_hours:hours}).eq('id',existing.data.id);
+    } else {
+      await sb.from('rota').insert({staff_id:staffId,house_id:houseId,shift_date:dateStr,shift_code:code,shift_hours:hours,created_by:CUProfile.id});
+    }
+  } else {
+    if(existing.data) await sb.from('rota').delete().eq('id',existing.data.id);
+  }
+  // Reload rota data
+  await loadRotaData();
+  renderRota();
+}
+
+async function loadRotaData(){
+  const houseId=scopeHouseId();
+  const y=rotaM.getFullYear(),mo=rotaM.getMonth();
+  const from=`${y}-${String(mo+1).padStart(2,'0')}-01`;
+  const to=`${y}-${String(mo+1).padStart(2,'0')}-31`;
+  let q=sb.from('rota').select('*').gte('shift_date',from).lte('shift_date',to);
+  if(houseId) q=q.eq('house_id',houseId);
+  const {data}=await q;
+  rotaData={};
+  (data||[]).forEach(r=>{
+    if(!rotaData[r.staff_id])rotaData[r.staff_id]={};
+    rotaData[r.staff_id][r.shift_date]=r.shift_code;
+  });
+}
+
+function getConflict(code,staffId,ym){
+  if(UNLIMITED.includes(code))return null;
+  const dayData=rotaData;
+  if(SLEEPIN.includes(code)){
+    for(const [sid,days] of Object.entries(dayData)){
+      if(sid===staffId)continue;
+      const key=`${ym}-${String(activeRotaCell.day).padStart(2,'0')}`;
+      if(SLEEPIN.includes(days[key])){
+        const s=staff.find(u=>u.id===sid);
+        return`Sleep-in already assigned to ${s?.name||'another staff member'}`;
+      }
+    }
+    return null;
+  }
+  for(const [sid,days] of Object.entries(dayData)){
+    if(sid===staffId)continue;
+    const key=`${ym}-${String(activeRotaCell.day).padStart(2,'0')}`;
+    if(days[key]===code){
+      const s=staff.find(u=>u.id===sid);
+      return`${code} already assigned to ${s?.name||'another staff member'}`;
+    }
+  }
+  return null;
+}
+
+function openShiftPicker(btn,staffId,ym,day){
+  activeRotaCell={staffId,ym,day,btnEl:btn};
+  const popup=document.getElementById('shift-popup');
+  const rect=btn.getBoundingClientRect();
+  let top=rect.bottom+8,left=rect.left-100;
+  if(left<8)left=8;if(left+300>window.innerWidth)left=window.innerWidth-308;
+  if(top+380>window.innerHeight)top=rect.top-360;
+  popup.style.top=top+'px';popup.style.left=left+'px';
+  const s=staff.find(u=>u.id===staffId);
+  const date=new Date(parseInt(ym.split('-')[0]),parseInt(ym.split('-')[1])-1,day);
+  document.getElementById('sp-title').textContent=`${s?.name?.split(' ')[0]||'Staff'} — ${date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}`;
+  window._rotaConflicts={};
+  const grid=document.getElementById('sp-grid');
+  grid.innerHTML=Object.entries(SHIFTS).map(([code,s])=>{
+    const conflict=getConflict(code,staffId,ym);
+    if(conflict)window._rotaConflicts[code]=conflict;
+    const dimmed=conflict?'opacity:.35;cursor:not-allowed;filter:grayscale(.4)':'';
+    return`<button class="sp-btn" data-shiftcode="${code}" data-hastaken="${conflict?'1':''}" style="background:${s.color};color:${s.tc};${dimmed}" onclick="handleSpBtn(this)">
+      <span class="sp-code">${code}</span><span class="sp-lbl">${s.label}${s.hours?' ('+s.hours+'h)':''}</span>
+      ${conflict?'<span style="font-size:9px;display:block;margin-top:2px">✕ Taken</span>':''}
+    </button>`;
+  }).join('');
+  popup.classList.add('open');
+  setTimeout(()=>document.addEventListener('click',outsideClick,{once:true}),100);
+}
+
+function outsideClick(e){
+  const p=document.getElementById('shift-popup');
+  if(!p.contains(e.target)&&e.target!==activeRotaCell.btnEl)closeShiftPicker();
+}
+function closeShiftPicker(){document.getElementById('shift-popup').classList.remove('open');}
+function handleSpBtn(btn){
+  const code=btn.dataset.shiftcode;
+  if(btn.dataset.hastaken==='1'){
+    const msg=window._rotaConflicts[code]||'Shift already taken';
+    const old=document.getElementById('sp-conflict');if(old)old.remove();
+    const div=document.createElement('div');div.id='sp-conflict';
+    div.style.cssText='background:#fee2e2;color:#991b1b;border-radius:8px;padding:10px;font-size:12px;font-weight:600;margin-bottom:10px;border:1px solid #fecaca;';
+    div.textContent='⚠️ '+msg;
+    document.getElementById('sp-grid').parentNode.insertBefore(div,document.getElementById('sp-grid'));
+    setTimeout(()=>{const el=document.getElementById('sp-conflict');if(el)el.remove();},3000);
+    return;
+  }
+  const {staffId,ym,day,btnEl}=activeRotaCell;
+  const s=SHIFTS[code];
+  if(btnEl){btnEl.textContent=code;btnEl.className='rc-btn '+s.cls;}
+  // Update total
+  updateRotaTotal(staffId,ym);
+  setRotaCell(staffId,ym,day,code);
+  closeShiftPicker();
+}
+function clearShiftCell(){
+  const {staffId,ym,day,btnEl}=activeRotaCell;
+  if(btnEl){btnEl.textContent='';btnEl.className='rc-btn';}
+  updateRotaTotal(staffId,ym);
+  setRotaCell(staffId,ym,day,null);
+  closeShiftPicker();
+}
+function updateRotaTotal(staffId,ym){
+  const data=rotaData[staffId]||{};
+  const total=Object.entries(data).filter(([k])=>k.startsWith(ym)).reduce((s,[,v])=>s+(SHIFTS[v]?.hours||0),0);
+  const el=document.getElementById('rt-'+staffId);if(el)el.textContent=total+' hrs';
+}
+
+async function renderRota(){
+  await loadRotaData();
+  const wrap=document.getElementById('rota-wrap');if(!wrap)return;
+  const houseId=scopeHouseId()||houses[0]?.id;
+  if(!houseId){wrap.innerHTML='<div class="empty"><p>Select a house</p></div>';return;}
+  const y=rotaM.getFullYear(),mo=rotaM.getMonth();
+  const ym=rotaKey(y,mo);
+  const days=new Date(y,mo+1,0).getDate();
+  const dn=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const list=staff.filter(u=>u.house_id===houseId&&u.role!=='admin');
+  if(!list.length){wrap.innerHTML='<div class="empty"><p>No staff assigned to this house</p></div>';return;}
+  let h=`<div class="rtwrap"><table class="rtbl"><thead><tr><th class="sc">Staff Member</th>`;
+  for(let d=1;d<=days;d++){const dt=new Date(y,mo,d);const dow=dt.getDay();const wk=dow===0||dow===6;h+=`<th class="${wk?'':''}"><span style="font-size:9px;display:block">${dn[dow===0?6:dow-1]}</span>${d}</th>`;}
+  h+=`<th style="background:#0a2540;color:#fff;min-width:60px">Hrs</th></tr></thead><tbody>`;
+  list.forEach(u=>{
+    let total=0;
+    h+=`<tr><td class="stc">${u.name}<span>${rl(u.role)}</span></td>`;
+    for(let d=1;d<=days;d++){
+      const ds=`${ym}-${String(d).padStart(2,'0')}`;
+      const code=rotaData[u.id]?.[ds]||'';
+      const s=SHIFTS[code]||null;
+      if(s)total+=s.hours;
+      h+=`<td><button class="rc-btn ${s?.cls||''}" onclick="openShiftPicker(this,'${u.id}','${ym}',${d})">${code}</button></td>`;
+    }
+    h+=`<td class="hrs-cell" id="rt-${u.id}">${total} hrs</td></tr>`;
+  });
+  h+=`</tbody></table></div>
+  <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;font-size:11px;color:var(--muted)">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#dbeafe;border-radius:2px;display:inline-block;border:1px solid #93c5fd"></span>9^9 Sleep-in</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#ede9fe;border-radius:2px;display:inline-block;border:1px solid #c4b5fd"></span>9^3 Sleep-in</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#d1fae5;border-radius:2px;display:inline-block;border:1px solid #6ee7b7"></span>11-9</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#fce7f3;border-radius:2px;display:inline-block"></span>AL</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#f1f5f9;border-radius:2px;display:inline-block"></span>DO</span>
+  </div>`;
+  wrap.innerHTML=h;
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+async function renderDash(){
+  const now=new Date();const h=now.getHours();
+  const greet=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  const swV=document.getElementById('sw-view');
+  const mgV=document.getElementById('mgr-view');
+  if(isW()){
+    swV.style.display='block';mgV.style.display='none';
+    document.getElementById('sw-greet').textContent=`${greet}, ${CUProfile.name.split(' ')[0]}!`;
+    const hse=houses.find(x=>x.id===CUProfile.house_id);
+    document.getElementById('sw-sub').textContent=`${hse?.name||''} — ${now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}`;
+  } else {
+    swV.style.display='none';mgV.style.display='block';
+    const suIds=scopeSUs().map(s=>s.id);
+    document.getElementById('d-su').textContent=suIds.length;
+    const today=td();
+    const todayGiven=marRecords.filter(r=>r.admin_date===today&&r.status==='given'&&suIds.includes(r.service_user_id)).length;
+    document.getElementById('d-mg').textContent=todayGiven;
+    const weekAgo=new Date(Date.now()-7*24*60*60*1000).toISOString().split('T')[0];
+    const inc=logs.filter(l=>suIds.includes(l.service_user_id)&&l.categories?.includes('Incident')&&l.log_date>=weekAgo).length;
+    document.getElementById('d-inc').textContent=inc;
+    const lowMeds=meds.filter(m=>suIds.includes(m.service_user_id)&&m.stock<=(m.reorder_at||7));
+    document.getElementById('d-ls').textContent=lowMeds.length;
+    const alerts=[];
+    lowMeds.filter(m=>m.stock<=2).forEach(m=>{const s=sus.find(x=>x.id===m.service_user_id);alerts.push(`<div class="al al-r">🚨 <div><strong>${m.name}</strong> for ${s?s.fname+' '+s.lname:'unknown'} — only ${m.stock} left</div></div>`);});
+    lowMeds.filter(m=>m.stock>2).forEach(m=>{const s=sus.find(x=>x.id===m.service_user_id);alerts.push(`<div class="al al-a">⚡ <div><strong>${m.name}</strong> — low stock (${m.stock})</div></div>`);});
+    document.getElementById('d-alerts').innerHTML=alerts.length?alerts.join(''):'<div class="al al-g">✓ No alerts at this time</div>';
+    const houseId=scopeHouseId();
+    const todayRota=await sb.from('rota').select('*,staff(name,role)').eq('shift_date',today).then(r=>r.data||[]);
+    const filtered=houseId?todayRota.filter(r=>r.house_id===houseId):todayRota;
+    const slCls={['9^9']:'bt2',['9^3']:'bp',['11-9']:'bg2',['10-5']:'ba',['11-7']:'ba','9-3':'bgy'};
+    document.getElementById('d-shifts').innerHTML=filtered.length?filtered.map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span class="bdg ${slCls[s.shift_code]||'bgy'}">${s.shift_code}</span>
+      <span style="font-size:13px;font-weight:600">${s.staff?.name||'Unknown'}</span>
+    </div>`).join(''):'<div style="color:var(--muted);font-size:13px">No shifts scheduled today</div>';
+  }
+}
+
+// ══════════════════════════════════════════
+// CIW
+// ══════════════════════════════════════════
+function renderCIW(){
+  const el=document.getElementById('ciw-content');if(!el)return;
+  const now=new Date();const year=now.getFullYear();
+  const houseId=scopeHouseId();
+  const hList=houseId?houses.filter(h=>h.id===houseId):houses;
+  const suList=scopeSUs();
+  const staffList=scopeStaff();
+  const incidents=logs.filter(l=>l.categories?.includes('Incident'));
+  const todayGiven=marRecords.filter(r=>r.status==='given').length;
+  const todayRefused=marRecords.filter(r=>r.status==='refused').length;
+  const totalSpend=fins.reduce((s,f)=>s+parseFloat(f.amount||0),0);
+  el.innerHTML=`
+    <div style="background:linear-gradient(135deg,var(--ink),var(--ink2));border-radius:var(--r);padding:22px;color:#fff;margin-bottom:20px">
+      <h2 style="font-size:20px;font-weight:800;margin-bottom:4px">CIW Annual Return ${year}</h2>
+      <p style="font-size:12px;opacity:.6">Auto-generated from CareSync data · Submit by 26 May ${year} · Publish online by 30 June ${year}</p>
+    </div>
+    ${hList.map(h=>`
+    <div class="ciw-section"><h3>Section 1 — Provider Information</h3>
+      <div class="ciw-field"><span class="lbl">Service Name</span><span class="val">${h.name}</span></div>
+      <div class="ciw-field"><span class="lbl">Address</span><span class="val">${h.address||'—'}</span></div>
+      <div class="ciw-field"><span class="lbl">Telephone</span><span class="val">${h.phone||'—'}</span></div>
+      <div class="ciw-field"><span class="lbl">Service Type</span><span class="val">Domiciliary / Supported Living</span></div>
+    </div>`).join('')}
+    <div class="ciw-section"><h3>Section 2 — Service Users</h3>
+      <div class="ciw-field"><span class="lbl">Total active service users</span><span class="val">${suList.length}</span></div>
+    </div>
+    <div class="ciw-section"><h3>Section 3 — Staffing</h3>
+      <div class="ciw-field"><span class="lbl">Total staff</span><span class="val">${staffList.length}</span></div>
+      <div class="ciw-field"><span class="lbl">Managers</span><span class="val">${staffList.filter(s=>s.role==='manager').length}</span></div>
+      <div class="ciw-field"><span class="lbl">Support Workers</span><span class="val">${staffList.filter(s=>s.role==='worker').length}</span></div>
+    </div>
+    <div class="ciw-section"><h3>Section 4 — Incidents</h3>
+      <div class="ciw-field"><span class="lbl">Total incidents recorded</span><span class="val">${incidents.length}</span></div>
+    </div>
+    <div class="ciw-section"><h3>Section 5 — Medication</h3>
+      <div class="ciw-field"><span class="lbl">Medications administered</span><span class="val">${todayGiven}</span></div>
+      <div class="ciw-field"><span class="lbl">Medication refusals</span><span class="val">${todayRefused}</span></div>
+      <div class="ciw-field"><span class="lbl">Active medications managed</span><span class="val">${meds.length}</span></div>
+    </div>
+    <div class="ciw-section"><h3>Section 6 — Finances</h3>
+      <div class="ciw-field"><span class="lbl">Total transactions</span><span class="val">${fins.length}</span></div>
+      <div class="ciw-field"><span class="lbl">Total expenditure</span><span class="val">£${totalSpend.toFixed(2)}</span></div>
+    </div>
+    <div style="background:var(--amber-pale);border:1px solid #fde68a;border-radius:10px;padding:14px;font-size:12px;color:#92400e;margin-top:8px">
+      ⚠️ Review all sections via your CIW Online account before submitting. This report is a summary from CareSync data.
+    </div>`;
+}
+function exportCIW(){
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CIW Annual Return</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;}h2{font-size:22px;}h3{font-size:15px;border-bottom:2px solid #0abf8a;padding-bottom:8px;margin:20px 0 12px;}.ciw-field{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;}.lbl{color:#94a3b8;}.val{font-weight:700;}</style></head><body>${document.getElementById('ciw-content').innerHTML}</body></html>`;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download='CIW-Return-'+new Date().getFullYear()+'.html';a.click();
+}
+
+// ══════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════
+updMLabels();
+document.getElementById('ddate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+init();
+</script>
+</body>
+</html>
