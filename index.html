@@ -175,6 +175,7 @@ tr:hover td{background:#fafcff;}
 .rtbl td.hrs-cell{font-size:13px;font-weight:700;color:var(--teal3);background:#f0fdf8;padding:4px 8px;}
 .rc-btn{width:54px;height:32px;border:none;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;background:#f1f5f9;color:var(--muted);display:block;margin:auto;}
 .rc-btn:hover{background:var(--teal-pale);color:var(--teal3);}
+.rc-btn.carryover{background:#e0f2fe;color:#0369a1;cursor:not-allowed;font-size:9px;opacity:.8;}
 .rc-btn.s9up9{background:#dbeafe;color:#1e40af;}
 .rc-btn.s9up3{background:#ede9fe;color:#5b21b6;}
 .rc-btn.s11-9{background:#d1fae5;color:#065f46;}
@@ -1586,23 +1587,56 @@ async function loadRotaData(){
   });
 }
 
+// Check if a day is a carryover from a sleep-in shift the previous day
+function isCarryoverDay(staffId, ym, day) {
+  // Check previous day
+  const y = parseInt(ym.split('-')[0]);
+  const mo = parseInt(ym.split('-')[1]);
+  let prevDay = day - 1;
+  let prevYm = ym;
+  if(prevDay < 1) {
+    // Go to previous month
+    const prevDate = new Date(y, mo-2, 0); // last day of prev month
+    prevDay = prevDate.getDate();
+    prevYm = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+  }
+  const prevKey = `${prevYm}-${String(prevDay).padStart(2,'0')}`;
+  const prevCode = rotaData[staffId]?.[prevKey];
+  return SLEEPIN.includes(prevCode) ? prevCode : null;
+}
+
 function getConflict(code,staffId,ym){
   if(UNLIMITED.includes(code))return null;
-  const dayData=rotaData;
+  const day = activeRotaCell.day;
+  // Block if this day is a carryover for this staff member
+  const carryover = isCarryoverDay(staffId, ym, day);
+  if(carryover) return `This day is already covered by ${carryover} sleep-in shift from the previous day`;
   if(SLEEPIN.includes(code)){
-    for(const [sid,days] of Object.entries(dayData)){
+    // Also check next day — if someone else has a sleep-in starting next day
+    for(const [sid,days] of Object.entries(rotaData)){
       if(sid===staffId)continue;
-      const key=`${ym}-${String(activeRotaCell.day).padStart(2,'0')}`;
+      const key=`${ym}-${String(day).padStart(2,'0')}`;
       if(SLEEPIN.includes(days[key])){
         const s=staff.find(u=>u.id===sid);
         return`Sleep-in already assigned to ${s?.name||'another staff member'}`;
       }
     }
+    // Check if next day already has a shift for THIS staff member (carryover conflict)
+    const y = parseInt(ym.split('-')[0]);
+    const mo = parseInt(ym.split('-')[1]);
+    const daysInMonth = new Date(y, mo, 0).getDate();
+    if(day < daysInMonth) {
+      const nextKey = `${ym}-${String(day+1).padStart(2,'0')}`;
+      const nextCode = rotaData[staffId]?.[nextKey];
+      if(nextCode && !UNLIMITED.includes(nextCode)) {
+        return `Cannot assign sleep-in — ${nextCode} already assigned on Day ${day+1}. Remove it first.`;
+      }
+    }
     return null;
   }
-  for(const [sid,days] of Object.entries(dayData)){
+  for(const [sid,days] of Object.entries(rotaData)){
     if(sid===staffId)continue;
-    const key=`${ym}-${String(activeRotaCell.day).padStart(2,'0')}`;
+    const key=`${ym}-${String(day).padStart(2,'0')}`;
     if(days[key]===code){
       const s=staff.find(u=>u.id===sid);
       return`${code} already assigned to ${s?.name||'another staff member'}`;
@@ -1612,6 +1646,12 @@ function getConflict(code,staffId,ym){
 }
 
 function openShiftPicker(btn,staffId,ym,day){
+  // Block if carryover day
+  const carryCode = isCarryoverDay(staffId, ym, day);
+  if(carryCode) {
+    alert(`This day is covered by the ${carryCode} sleep-in shift from the previous day. Staff are still on duty.`);
+    return;
+  }
   activeRotaCell={staffId,ym,day,btnEl:btn};
   const popup=document.getElementById('shift-popup');
   const rect=btn.getBoundingClientRect();
@@ -1697,7 +1737,15 @@ async function renderRota(){
       const code=rotaData[u.id]?.[ds]||'';
       const s=SHIFTS[code]||null;
       if(s)total+=s.hours;
-      h+=`<td><button class="rc-btn ${s?.cls||''}" onclick="openShiftPicker(this,'${u.id}','${ym}',${d})">${code}</button></td>`;
+      // Check if this day is a carryover from previous day's sleep-in
+      const carryCode = isCarryoverDay(u.id, ym, d);
+      if(carryCode && !code) {
+        // Show carryover indicator — locked, cannot assign
+        const carryLabel = carryCode==='9^9'?'←9^9':'←9^3';
+        h+=`<td title="Carryover from ${carryCode} sleep-in — staff still on duty"><button class="rc-btn carryover" disabled>${carryLabel}</button></td>`;
+      } else {
+        h+=`<td><button class="rc-btn ${s?.cls||''}" onclick="openShiftPicker(this,'${u.id}','${ym}',${d})">${code}</button></td>`;
+      }
     }
     h+=`<td class="hrs-cell" id="rt-${u.id}">${total} hrs</td></tr>`;
   });
@@ -1706,6 +1754,7 @@ async function renderRota(){
     <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#dbeafe;border-radius:2px;display:inline-block;border:1px solid #93c5fd"></span>9^9 Sleep-in</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#ede9fe;border-radius:2px;display:inline-block;border:1px solid #c4b5fd"></span>9^3 Sleep-in</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#d1fae5;border-radius:2px;display:inline-block;border:1px solid #6ee7b7"></span>11-9</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#e0f2fe;border-radius:2px;display:inline-block;border:1px solid #7dd3fc"></span>← Carryover (sleep-in day 2)</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#fce7f3;border-radius:2px;display:inline-block"></span>AL</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:10px;background:#f1f5f9;border-radius:2px;display:inline-block"></span>DO</span>
   </div>`;
