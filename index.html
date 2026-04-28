@@ -199,6 +199,32 @@ tr:hover td{background:#fafcff;}
 .fbal{background:linear-gradient(135deg,var(--teal3),var(--teal));border-radius:var(--r);padding:22px;color:#fff;margin-bottom:16px;}
 .fbal .fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.75;}
 .fbal .fa{font-size:38px;font-weight:800;letter-spacing:-2px;margin:4px 0 2px;}
+.fbal.low{background:linear-gradient(135deg,#b91c1c,#ef4444);}
+.fin-tx{padding:10px 0;border-bottom:1px solid #f5f7fb;display:grid;grid-template-columns:80px 1fr auto auto;gap:8px;align-items:center;font-size:12px;}
+.fin-tx:last-child{border-bottom:none;}
+.fin-tx .date{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;}
+.fin-tx .desc{color:var(--ink);}
+.fin-tx .desc .sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.fin-tx .amt{font-weight:700;font-size:13px;text-align:right;min-width:70px;}
+.fin-tx .amt.in{color:#065f46;}
+.fin-tx .amt.out{color:#991b1b;}
+.fin-tx .bal{font-size:11px;color:var(--muted);text-align:right;min-width:60px;}
+.fin-tx .sig{font-size:10px;background:var(--bg);padding:2px 6px;border-radius:4px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.fin-week{background:var(--white);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:12px;overflow:hidden;}
+.fin-week-header{background:var(--bg);padding:10px 16px;font-size:12px;font-weight:700;color:var(--ink);display:flex;justify-content:space-between;align-items:center;}
+.fin-week-body{padding:0 16px;}
+.fin-summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.fin-summary-card{background:var(--white);border-radius:var(--r);padding:14px;box-shadow:var(--sh);text-align:center;}
+.fin-summary-card .lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.fin-summary-card .val{font-size:20px;font-weight:800;color:var(--ink);margin-top:4px;}
+.fin-type-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.fin-type-topup{background:#dcfce7;color:#065f46;}
+.fin-type-spending{background:#fee2e2;color:#991b1b;}
+.fin-type-given{background:#fef3c7;color:#92400e;}
+.fin-type-returned{background:#dbeafe;color:#1e40af;}
+.fin-period-tabs{display:flex;gap:4px;margin-bottom:16px;}
+.fin-period-tab{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--muted);font-family:inherit;transition:all .15s;}
+.fin-period-tab.on{background:var(--teal);color:#fff;border-color:var(--teal);}
 
 /* ALERTS */
 .al{padding:12px 16px;border-radius:10px;font-size:13px;display:flex;gap:10px;margin-bottom:10px;}
@@ -477,8 +503,21 @@ tr:hover td{background:#fafcff;}
 
     <!-- FINANCES -->
     <div class="pg" id="pg-finances">
-      <div class="ph"><div><h1>Finances</h1><p>Petty cash and service user spending</p></div><button class="btn bt bsm" onclick="om('add-fin-m')">+ Record Transaction</button></div>
-      <div class="frow2"><select id="fsf" onchange="renderFin()"><option value="">All Service Users</option></select></div>
+      <div class="ph">
+        <div><h1>Finances</h1><p>Petty cash, spending and statements</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn bt bsm" onclick="om('add-fin-m')">+ Record Transaction</button>
+          <button class="btn bo bsm" onclick="exportFinStatement()">⬇ Export Statement</button>
+        </div>
+      </div>
+      <div class="frow2">
+        <select id="fsf" onchange="renderFin()"><option value="">All Service Users</option></select>
+        <div class="fin-period-tabs">
+          <button class="fin-period-tab on" onclick="setFinPeriod('week',this)">Weekly</button>
+          <button class="fin-period-tab" onclick="setFinPeriod('month',this)">Monthly</button>
+          <button class="fin-period-tab" onclick="setFinPeriod('all',this)">All Time</button>
+        </div>
+      </div>
       <div id="fin-content"><div class="empty"><p>Loading finances...</p></div></div>
     </div>
 
@@ -685,8 +724,22 @@ tr:hover td{background:#fafcff;}
 <div class="ovl" id="add-fin-m"><div class="modal">
   <div class="mh"><h3>Record Transaction</h3><button class="mc" onclick="cm('add-fin-m')">×</button></div>
   <div class="f"><label>Service User</label><select id="fn-su"></select></div>
+  
+  <!-- Transaction Type -->
+  <div class="f"><label>Transaction Type</label>
+    <div class="trow" id="fin-type-tags">
+      <div class="tag" onclick="togSingle(this,'fin-type-tags');showFinFields(this)">💰 Top Up</div>
+      <div class="tag" onclick="togSingle(this,'fin-type-tags');showFinFields(this)">🛒 Spending</div>
+      <div class="tag" onclick="togSingle(this,'fin-type-tags');showFinFields(this)">👤 Given to Staff</div>
+      <div class="tag" onclick="togSingle(this,'fin-type-tags');showFinFields(this)">↩️ Returned by Staff</div>
+      <div class="tag" onclick="togSingle(this,'fin-type-tags');showFinFields(this)">↩️ Returned by Service User</div>
+    </div>
+  </div>
+
   <div class="f"><label>Amount (£)</label><input id="fn-am" type="number" step="0.01" min="0" placeholder="0.00"></div>
-  <div class="f"><label>Category</label>
+  
+  <!-- Spending category — shown for spending only -->
+  <div class="f" id="fn-cat-wrap" style="display:none"><label>Category</label>
     <div class="trow" id="fin-cats">
       <div class="tag" onclick="togSingle(this,'fin-cats')">🛒 Shopping</div>
       <div class="tag" onclick="togSingle(this,'fin-cats')">🎯 Activities</div>
@@ -696,11 +749,33 @@ tr:hover td{background:#fafcff;}
       <div class="tag" onclick="togSingle(this,'fin-cats')">📦 Other</div>
     </div>
   </div>
-  <div class="f"><label>Description</label><input id="fn-ds" type="text"></div>
-  <div class="f"><label>Where</label><input id="fn-wh" type="text" placeholder="Tesco, Bangor"></div>
-  <div class="f"><label>Who accompanied</label><input id="fn-wo" type="text"></div>
-  <div class="frow"><div class="f"><label>Date</label><input id="fn-dt" type="date"></div><div class="f"><label>Receipt Ref</label><input id="fn-rf" type="text"></div></div>
-  <div class="mf"><button class="btn bo" onclick="cm('add-fin-m')">Cancel</button><button class="btn bt" onclick="addFin()">Save</button></div>
+
+  <div class="f"><label>Description / Purpose</label><input id="fn-ds" type="text" placeholder="e.g. Weekly shopping, Bus to town..."></div>
+  
+  <!-- Where — shown for spending -->
+  <div class="f" id="fn-where-wrap"><label>Where (location / shop)</label><input id="fn-wh" type="text" placeholder="Tesco, Bangor"></div>
+  
+  <!-- Who accompanied — shown for spending/given -->
+  <div class="f" id="fn-who-wrap"><label>Who accompanied / Staff name</label><input id="fn-wo" type="text"></div>
+
+  <!-- Amount given vs spent vs returned — shown for given to staff -->
+  <div class="f" id="fn-given-wrap" style="display:none">
+    <label>Amount Given to Staff (£)</label><input id="fn-given" type="number" step="0.01" min="0" placeholder="20.00">
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Record the return separately when staff brings back change</div>
+  </div>
+
+  <!-- Staff signature -->
+  <div class="f" id="fn-sig-wrap" style="display:none">
+    <label>Staff Initials (signature)</label>
+    <input id="fn-sig" type="text" maxlength="4" placeholder="JS" style="text-transform:uppercase">
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Staff member confirms receipt of cash</div>
+  </div>
+
+  <div class="frow">
+    <div class="f"><label>Date</label><input id="fn-dt" type="date"></div>
+    <div class="f"><label>Receipt Ref (optional)</label><input id="fn-rf" type="text" placeholder="RCP-001"></div>
+  </div>
+  <div class="mf"><button class="btn bo" onclick="cm('add-fin-m')">Cancel</button><button class="btn bt" onclick="addFin()">Save Transaction</button></div>
 </div></div>
 
 <script>
